@@ -212,6 +212,65 @@
     padding:10px 16px; border-radius:8px; font-size:13px;
   }
 
+  .modal-firma {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#000;
+    z-index:1000;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    gap:16px;
+  }
+  .modal-firma h2 {
+    font-size:16px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    text-align:center;
+  }
+  .firma-wrap {
+    width:100%;
+    max-width:480px;
+    aspect-ratio: 600 / 260;
+    background:#fff;
+    border-radius:8px;
+    border:3px solid var(--gold);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.15), 0 0 10px rgba(201,168,106,0.4);
+    overflow:hidden;
+  }
+  .firma-wrap canvas {
+    width:100%;
+    height:100%;
+    display:block;
+    touch-action:none;
+  }
+  .firma-ayuda {
+    color:#ccc;
+    font-size:12px;
+    text-align:center;
+  }
+  .firma-controles {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .btn-firma-confirmar {
+    padding:12px 20px;
+    border:none;
+    border-radius:8px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+    font-weight:bold;
+    font-size:13px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+
   .card {
     background:var(--bg-card); border:1px solid #262626; border-radius:10px;
     padding:14px; margin-bottom:12px;
@@ -820,7 +879,7 @@
         '<div class="card-row">' + s.eess + ' · ' + s.categoria + '</div>' +
         '<div class="card-row">Cantidad: ' + s.cantidad + '</div>' +
         '<div class="card-row">Encargado: ' + s.encargado + '</div>' +
-        '<button class="btn-generar-pdf" onclick="enviarSolicitud(\'' + s.id + '\')">Generar orden de compra (PDF)</button>';
+        '<button class="btn-generar-pdf" onclick="abrirFirma(\'' + s.id + '\')">Firmar y enviar (PDF)</button>';
       cont.appendChild(card);
     });
   }
@@ -934,15 +993,118 @@
         }
         x += anchoCelda + 10;
       });
+      y += altoCelda + 10;
+    }
+
+    if (solicitud.firma) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      y += 4;
+      doc.setFont(undefined, 'bold');
+      doc.text('Firma del Encargado:', 15, y);
+      y += 4;
+      try {
+        doc.addImage(solicitud.firma, 'PNG', 15, y, 70, 30);
+      } catch (e) {
+        // si la firma falla, seguimos sin bloquear el resto del PDF
+      }
+      y += 30;
+      doc.setDrawColor(150, 150, 150);
+      doc.line(15, y, 85, y);
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(solicitud.encargado || '', 15, y + 5);
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'normal');
     }
 
     doc.save('orden-de-compra-' + solicitud.id + '.pdf');
   }
 
-  function enviarSolicitud(id) {
+  let firmaCtx = null;
+  let firmaDibujando = false;
+  let firmaTieneTrazo = false;
+  let idPendienteFirma = null;
+
+  function abrirFirma(id) {
+    idPendienteFirma = id;
+    const canvas = document.getElementById('canvasFirma');
+    firmaCtx = canvas.getContext('2d');
+    firmaCtx.fillStyle = '#ffffff';
+    firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+    firmaCtx.strokeStyle = '#000000';
+    firmaCtx.lineWidth = 3;
+    firmaCtx.lineCap = 'round';
+    firmaCtx.lineJoin = 'round';
+    firmaTieneTrazo = false;
+    document.getElementById('modalFirma').style.display = 'flex';
+  }
+
+  function cerrarFirma() {
+    document.getElementById('modalFirma').style.display = 'none';
+    idPendienteFirma = null;
+  }
+
+  function limpiarFirma() {
+    const canvas = document.getElementById('canvasFirma');
+    firmaCtx.fillStyle = '#ffffff';
+    firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+    firmaTieneTrazo = false;
+  }
+
+  function posicionFirma(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    const escalaX = canvas.width / rect.width;
+    const escalaY = canvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * escalaX,
+      y: (evt.clientY - rect.top) * escalaY
+    };
+  }
+
+  function firmaInicio(evt) {
+    evt.preventDefault();
+    const canvas = document.getElementById('canvasFirma');
+    try { canvas.setPointerCapture(evt.pointerId); } catch (e) {}
+    const pos = posicionFirma(canvas, evt);
+    firmaDibujando = true;
+    firmaTieneTrazo = true;
+    firmaCtx.beginPath();
+    firmaCtx.moveTo(pos.x, pos.y);
+  }
+
+  function firmaMover(evt) {
+    if (!firmaDibujando) return;
+    evt.preventDefault();
+    const canvas = document.getElementById('canvasFirma');
+    const pos = posicionFirma(canvas, evt);
+    firmaCtx.lineTo(pos.x, pos.y);
+    firmaCtx.stroke();
+  }
+
+  function firmaFin(evt) {
+    firmaDibujando = false;
+  }
+
+  function confirmarFirma() {
+    if (!firmaTieneTrazo) {
+      alert('Necesitás firmar antes de continuar.');
+      return;
+    }
+    const canvas = document.getElementById('canvasFirma');
+    const firmaDataUrl = canvas.toDataURL('image/png');
+    const id = idPendienteFirma;
+    document.getElementById('modalFirma').style.display = 'none';
+    idPendienteFirma = null;
+    procesarEnvioConFirma(id, firmaDataUrl);
+  }
+
+  function procesarEnvioConFirma(id, firmaDataUrl) {
     const lista = obtenerSolicitudes();
     const idx = lista.findIndex(s => s.id === id);
     if (idx === -1) return;
+
+    lista[idx].firma = firmaDataUrl;
 
     try {
       generarPDFOrden(lista[idx]);
@@ -981,6 +1143,24 @@
       <button type="button" class="btn-camara-secundario" onclick="cerrarCamara()">Cancelar</button>
       <button type="button" class="btn-camara-disparar" onclick="capturarFoto()" aria-label="Sacar foto"></button>
       <button type="button" class="btn-camara-secundario" onclick="cambiarCamara()">🔄</button>
+    </div>
+  </div>
+
+  <div id="modalFirma" class="modal-firma">
+    <h2 class="texto-metal">Firmá para enviar la orden</h2>
+    <div class="firma-wrap">
+      <canvas id="canvasFirma" width="600" height="260"
+        onpointerdown="firmaInicio(event)"
+        onpointermove="firmaMover(event)"
+        onpointerup="firmaFin(event)"
+        onpointercancel="firmaFin(event)"
+        onpointerleave="firmaFin(event)"></canvas>
+    </div>
+    <p class="firma-ayuda">Dibujá tu firma con el dedo dentro del recuadro</p>
+    <div class="firma-controles">
+      <button type="button" class="btn-camara-secundario" onclick="cerrarFirma()">Cancelar</button>
+      <button type="button" class="btn-camara-secundario" onclick="limpiarFirma()">Limpiar</button>
+      <button type="button" class="btn-firma-confirmar" onclick="confirmarFirma()">Confirmar y enviar</button>
     </div>
   </div>
 
