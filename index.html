@@ -135,6 +135,30 @@
   .card .card-date { font-size:11px; color:var(--text-dim); white-space:nowrap; }
   .card .card-row { font-size:13px; color:var(--text); margin-bottom:2px; }
   .badge-urgente { display:inline-block; background:#e05c5c; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; text-transform:uppercase; vertical-align:middle; }
+
+  .btn-dictar {
+    width:100%;
+    padding:14px;
+    border:2px solid var(--gold);
+    border-radius:8px;
+    background:transparent;
+    color: var(--gold);
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-size:14px;
+    margin-bottom:8px;
+  }
+  .btn-dictar.grabando {
+    background: var(--gold);
+    color:#121212;
+    animation: pulsoDictado 1s infinite;
+  }
+  @keyframes pulsoDictado {
+    0%, 100% { opacity:1; }
+    50% { opacity:0.55; }
+  }
+  #dictadoEstado { margin-bottom:16px; }
 </style>
 </head>
 <body>
@@ -155,6 +179,9 @@
     <main>
       <div id="tab-inicio" class="tab-content active">
         <form id="formSolicitud" onsubmit="return guardarSolicitud(event)">
+          <button type="button" id="btnDictar" class="btn-dictar" onclick="iniciarDictado()">🎤 Dictar solicitud</button>
+          <div id="dictadoEstado" class="msg"></div>
+
           <label>EESS / Destino
             <input type="text" id="f_eess" required>
           </label>
@@ -243,6 +270,21 @@
   const USUARIO_DEMO = "demo-oc";
   const CLAVE_DEMO = "123456";
   let adjuntosTemp = [];
+
+  window.addEventListener('error', function(e) {
+    const msg = document.getElementById('f_msg');
+    if (msg) {
+      msg.textContent = 'Error inesperado: ' + (e.message || 'sin detalle');
+      msg.className = 'msg error';
+    }
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    const msg = document.getElementById('f_msg');
+    if (msg) {
+      msg.textContent = 'Error inesperado: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+      msg.className = 'msg error';
+    }
+  });
 
   function intentarLogin() {
     const user = document.getElementById('loginUser').value.trim();
@@ -333,61 +375,209 @@
     });
   });
 
+  function quitarAcentos(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  const CAMPOS_VOZ = [
+    { clave: 'eess', patrones: ['estacion', 'eess', 'destino'], targetId: 'f_eess' },
+    { clave: 'encargado', patrones: ['encargado'], targetId: 'f_encargado' },
+    { clave: 'categoria', patrones: ['categoria'] },
+    { clave: 'producto', patrones: ['producto', 'servicio'], targetId: 'f_producto' },
+    { clave: 'cantidad', patrones: ['cantidad'], targetId: 'f_cantidad' },
+    { clave: 'motivo', patrones: ['motivo', 'justificacion'], targetId: 'f_motivo' },
+    { clave: 'caracteristicas', patrones: ['caracteristicas', 'especificaciones'], targetId: 'f_caracteristicas' },
+    { clave: 'urgente', patrones: ['urgente'] }
+  ];
+
+  function interpretarVozFormulario(texto) {
+    const textoNorm = quitarAcentos(texto.toLowerCase());
+    const encontrados = [];
+    CAMPOS_VOZ.forEach(campo => {
+      campo.patrones.forEach(patron => {
+        const idx = textoNorm.indexOf(patron);
+        if (idx !== -1) {
+          encontrados.push({ campo: campo, idx: idx, len: patron.length });
+        }
+      });
+    });
+    encontrados.sort((a, b) => a.idx - b.idx);
+
+    const vistos = new Set();
+    const unicos = encontrados.filter(e => {
+      if (vistos.has(e.campo.clave)) return false;
+      vistos.add(e.campo.clave);
+      return true;
+    });
+
+    const resultados = {};
+    unicos.forEach((e, i) => {
+      const inicioValor = e.idx + e.len;
+      const finValor = i + 1 < unicos.length ? unicos[i + 1].idx : texto.length;
+      let valor = texto.substring(inicioValor, finValor);
+      valor = valor.replace(/^[\s:,.-]+|[\s:,.-]+$/g, '');
+      resultados[e.campo.clave] = valor;
+    });
+    return resultados;
+  }
+
+  function aplicarDictado(resultados) {
+    CAMPOS_VOZ.forEach(campo => {
+      if (campo.targetId && resultados[campo.clave]) {
+        document.getElementById(campo.targetId).value = resultados[campo.clave];
+      }
+    });
+
+    if (resultados.cantidad) {
+      const numero = resultados.cantidad.match(/\d+/);
+      if (numero) document.getElementById('f_cantidad').value = numero[0];
+    }
+
+    if (resultados.categoria) {
+      const catTexto = quitarAcentos(resultados.categoria.toLowerCase());
+      const opciones = [
+        { valor: 'Insumos', match: 'insumos' },
+        { valor: 'Compras para infraestructura', match: 'infraestructura' },
+        { valor: 'Obras', match: 'obras' },
+        { valor: 'Mercaderías', match: 'mercader' }
+      ];
+      const encontrada = opciones.find(o => catTexto.includes(o.match));
+      if (encontrada) {
+        const radio = document.querySelector('input[name="f_categoria"][value="' + encontrada.valor + '"]');
+        if (radio) radio.checked = true;
+      }
+    }
+
+    if (resultados.urgente) {
+      const urgTexto = quitarAcentos(resultados.urgente.toLowerCase());
+      let valor = null;
+      if (urgTexto.includes('no')) valor = 'no';
+      else if (urgTexto.includes('si')) valor = 'si';
+      if (valor) {
+        const radio = document.querySelector('input[name="f_urgente"][value="' + valor + '"]');
+        if (radio) {
+          radio.checked = true;
+          toggleMotivoUrgencia();
+        }
+      }
+    }
+  }
+
+  let reconocimientoVoz = null;
+
+  function iniciarDictado() {
+    const btn = document.getElementById('btnDictar');
+    const estado = document.getElementById('dictadoEstado');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      estado.textContent = 'El dictado por voz solo funciona en Chrome.';
+      estado.className = 'msg error';
+      return;
+    }
+
+    if (reconocimientoVoz) {
+      reconocimientoVoz.stop();
+      return;
+    }
+
+    reconocimientoVoz = new SpeechRecognition();
+    reconocimientoVoz.lang = 'es-AR';
+    reconocimientoVoz.continuous = false;
+    reconocimientoVoz.interimResults = false;
+
+    btn.classList.add('grabando');
+    estado.textContent = 'Escuchando... decí, por ejemplo: "estación Triángulo, encargado Javier Pérez, categoría insumos, producto detergente, cantidad 200, motivo reposición de stock"';
+    estado.className = 'msg';
+
+    reconocimientoVoz.onresult = function(event) {
+      const texto = event.results[0][0].transcript;
+      const resultados = interpretarVozFormulario(texto);
+      aplicarDictado(resultados);
+      estado.textContent = 'Se completó lo reconocido: "' + texto + '"';
+      estado.className = 'msg ok';
+    };
+
+    reconocimientoVoz.onerror = function(event) {
+      estado.textContent = 'No se pudo escuchar: ' + event.error;
+      estado.className = 'msg error';
+    };
+
+    reconocimientoVoz.onend = function() {
+      btn.classList.remove('grabando');
+      reconocimientoVoz = null;
+    };
+
+    reconocimientoVoz.start();
+  }
+
   function generarId() {
     return 'oc' + Date.now();
   }
 
   function guardarSolicitud(event) {
     event.preventDefault();
-    const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
-    const urgenteEl = document.querySelector('input[name="f_urgente"]:checked');
     const msg = document.getElementById('f_msg');
-
-    if (!categoriaEl) {
-      msg.textContent = 'Elegí una categoría';
-      msg.className = 'msg error';
-      return false;
-    }
-
-    const solicitud = {
-      id: generarId(),
-      eess: document.getElementById('f_eess').value.trim(),
-      encargado: document.getElementById('f_encargado').value.trim(),
-      fecha: document.getElementById('f_fecha').value,
-      categoria: categoriaEl.value,
-      producto: document.getElementById('f_producto').value.trim(),
-      cantidad: document.getElementById('f_cantidad').value,
-      fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
-      motivo: document.getElementById('f_motivo').value.trim(),
-      caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
-      adjuntos: adjuntosTemp,
-      urgente: urgenteEl ? urgenteEl.value : 'no',
-      motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
-      estado: 'generada',
-      creada: new Date().toISOString()
-    };
-
-    const lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
-    lista.push(solicitud);
     try {
-      localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+      const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
+      const urgenteEl = document.querySelector('input[name="f_urgente"]:checked');
+
+      if (!categoriaEl) {
+        msg.textContent = 'Elegí una categoría';
+        msg.className = 'msg error';
+        return false;
+      }
+
+      const solicitud = {
+        id: generarId(),
+        eess: document.getElementById('f_eess').value.trim(),
+        encargado: document.getElementById('f_encargado').value.trim(),
+        fecha: document.getElementById('f_fecha').value,
+        categoria: categoriaEl.value,
+        producto: document.getElementById('f_producto').value.trim(),
+        cantidad: document.getElementById('f_cantidad').value,
+        fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
+        motivo: document.getElementById('f_motivo').value.trim(),
+        caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
+        adjuntos: adjuntosTemp,
+        urgente: urgenteEl ? urgenteEl.value : 'no',
+        motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
+        estado: 'generada',
+        creada: new Date().toISOString()
+      };
+
+      let lista;
+      try {
+        lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
+      } catch (parseErr) {
+        lista = [];
+      }
+      lista.push(solicitud);
+
+      try {
+        localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+      } catch (err) {
+        msg.textContent = 'No se pudo guardar: las fotos ocupan demasiado espacio. Sacá menos fotos o de menor calidad e intentá de nuevo.';
+        msg.className = 'msg error';
+        return false;
+      }
+
+      document.getElementById('formSolicitud').reset();
+      adjuntosTemp = [];
+      document.getElementById('f_adjuntosPreview').innerHTML = '';
+      document.getElementById('f_fecha').value = hoyISO();
+      toggleMotivoUrgencia();
+
+      msg.textContent = 'Solicitud generada correctamente';
+      msg.className = 'msg ok';
+
+      renderGeneradas();
+      return false;
     } catch (err) {
-      msg.textContent = 'No se pudo guardar: las fotos ocupan demasiado espacio. Sacá menos fotos o de menor calidad e intentá de nuevo.';
+      msg.textContent = 'Error inesperado al guardar: ' + err.message;
       msg.className = 'msg error';
       return false;
     }
-
-    document.getElementById('formSolicitud').reset();
-    adjuntosTemp = [];
-    document.getElementById('f_adjuntosPreview').innerHTML = '';
-    document.getElementById('f_fecha').value = hoyISO();
-    toggleMotivoUrgencia();
-
-    msg.textContent = 'Solicitud generada correctamente';
-    msg.className = 'msg ok';
-
-    renderGeneradas();
-    return false;
   }
 
   function renderGeneradas() {
