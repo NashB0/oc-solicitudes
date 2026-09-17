@@ -353,22 +353,33 @@
     document.getElementById('f_motivoUrgenciaWrap').style.display = urgente === 'si' ? 'block' : 'none';
   }
 
+  const RATIO_MARCO_FOTO = 4 / 3;
+
   function comprimirImagen(file, maxWidth, calidad) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = function(ev) {
         const img = new Image();
         img.onload = function() {
-          let w = img.width, h = img.height;
-          if (w > maxWidth) {
-            h = Math.round(h * (maxWidth / w));
-            w = maxWidth;
+          let sx = 0, sy = 0, sw = img.width, sh = img.height;
+          const ratioActual = img.width / img.height;
+
+          if (ratioActual > RATIO_MARCO_FOTO) {
+            sw = img.height * RATIO_MARCO_FOTO;
+            sx = (img.width - sw) / 2;
+          } else {
+            sh = img.width / RATIO_MARCO_FOTO;
+            sy = (img.height - sh) / 2;
           }
+
+          const w = maxWidth;
+          const h = Math.round(w / RATIO_MARCO_FOTO);
+
           const canvas = document.createElement('canvas');
           canvas.width = w;
           canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', calidad));
+          canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+          resolve({ dataUrl: canvas.toDataURL('image/jpeg', calidad), ancho: w, alto: h });
         };
         img.onerror = function() { reject(new Error('No se pudo leer la imagen')); };
         img.src = ev.target.result;
@@ -384,10 +395,10 @@
     const preview = document.getElementById('f_adjuntosPreview');
     preview.innerHTML = '';
     files.forEach(file => {
-      comprimirImagen(file, 1000, 0.6).then(dataUrl => {
-        adjuntosTemp.push({ nombre: file.name, dataUrl: dataUrl });
+      comprimirImagen(file, 900, 0.7).then(resultado => {
+        adjuntosTemp.push({ nombre: file.name, dataUrl: resultado.dataUrl, ancho: resultado.ancho, alto: resultado.alto });
         const img = document.createElement('img');
-        img.src = dataUrl;
+        img.src = resultado.dataUrl;
         preview.appendChild(img);
       }).catch(function() {
         const chip = document.createElement('div');
@@ -689,10 +700,14 @@
 
     function linea(etiqueta, valor) {
       doc.setFont(undefined, 'bold');
-      doc.text(etiqueta + ':', 15, y);
+      const textoEtiqueta = etiqueta + ':';
+      doc.text(textoEtiqueta, 15, y);
+      const anchoEtiqueta = doc.getTextWidth(textoEtiqueta);
       doc.setFont(undefined, 'normal');
-      const texto = doc.splitTextToSize(valor || '-', 125);
-      doc.text(texto, 62, y);
+      const xValor = 15 + anchoEtiqueta + 4;
+      const anchoDisponible = 195 - xValor;
+      const texto = doc.splitTextToSize(valor || '-', anchoDisponible);
+      doc.text(texto, xValor, y);
       y += 7 * texto.length;
     }
 
@@ -716,18 +731,32 @@
       y += 8;
       doc.setFont(undefined, 'normal');
 
-      const anchoImg = 60;
-      const altoImg = 45;
+      const anchoCelda = 60;
+      const altoCelda = 45;
       let x = 15;
       solicitud.adjuntos.forEach(adj => {
-        if (x + anchoImg > 195) { x = 15; y += altoImg + 8; }
-        if (y + altoImg > 280) { doc.addPage(); y = 20; x = 15; }
+        if (x + anchoCelda > 195) { x = 15; y += altoCelda + 8; }
+        if (y + altoCelda > 280) { doc.addPage(); y = 20; x = 15; }
+
+        let wImg = anchoCelda, hImg = altoCelda;
+        if (adj.ancho && adj.alto) {
+          const ratio = adj.ancho / adj.alto;
+          const ratioCelda = anchoCelda / altoCelda;
+          if (ratio > ratioCelda) {
+            wImg = anchoCelda;
+            hImg = anchoCelda / ratio;
+          } else {
+            hImg = altoCelda;
+            wImg = altoCelda * ratio;
+          }
+        }
+
         try {
-          doc.addImage(adj.dataUrl, 'JPEG', x, y, anchoImg, altoImg);
+          doc.addImage(adj.dataUrl, 'JPEG', x, y, wImg, hImg);
         } catch (e) {
           // si una imagen puntual falla, seguimos con el resto
         }
-        x += anchoImg + 10;
+        x += anchoCelda + 10;
       });
     }
 
