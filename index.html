@@ -104,6 +104,36 @@
   }
   nav.bottom-nav button.active { color: var(--gold); }
   nav.bottom-nav svg { width:22px; height:22px; }
+
+  form label { display:block; margin-bottom:14px; font-size:13px; color:var(--text-dim); }
+  form input[type="text"], form input[type="date"], form input[type="number"], form textarea {
+    width:100%; margin-top:6px; padding:12px; border-radius:8px; border:1px solid #333;
+    background:var(--bg-card); color:var(--text); font-size:15px; font-family:inherit;
+  }
+  form textarea { resize:vertical; }
+  fieldset { border:1px solid #333; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
+  fieldset legend { padding:0 6px; font-size:13px; color:var(--text-dim); }
+  label.radio { display:inline-flex; align-items:center; gap:6px; margin-right:14px; margin-bottom:6px; font-size:14px; color:var(--text); }
+  label.radio input { width:auto; }
+  form button[type="submit"] {
+    width:100%; padding:14px; border:none; border-radius:8px; background:var(--gold);
+    color:#121212; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:15px; margin-top:6px;
+  }
+  .msg { min-height:20px; margin-top:10px; font-size:13px; }
+  .msg.ok { color:#7fd88f; }
+  .msg.error { color:#e05c5c; }
+  .adjuntos-preview { display:flex; flex-wrap:wrap; gap:8px; margin: -6px 0 14px; }
+  .adjuntos-preview img { width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid #333; }
+
+  .card {
+    background:var(--bg-card); border:1px solid #262626; border-radius:10px;
+    padding:14px; margin-bottom:12px;
+  }
+  .card .card-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:8px; }
+  .card .card-title { font-weight:bold; color:var(--gold); font-size:14px; }
+  .card .card-date { font-size:11px; color:var(--text-dim); white-space:nowrap; }
+  .card .card-row { font-size:13px; color:var(--text); margin-bottom:2px; }
+  .badge-urgente { display:inline-block; background:#e05c5c; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; text-transform:uppercase; vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -123,10 +153,70 @@
     </header>
     <main>
       <div id="tab-inicio" class="tab-content active">
-        <p class="placeholder">Acá va el formulario de solicitud (próximo paso)</p>
+        <form id="formSolicitud" onsubmit="return guardarSolicitud(event)">
+          <label>EESS / Destino
+            <input type="text" id="f_eess" required>
+          </label>
+
+          <label>Encargado
+            <input type="text" id="f_encargado" required>
+          </label>
+
+          <label>Fecha
+            <input type="date" id="f_fecha" required>
+          </label>
+
+          <fieldset>
+            <legend>Categoría</legend>
+            <label class="radio"><input type="radio" name="f_categoria" value="Insumos" required> Insumos</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Compras para infraestructura"> Compras para infraestructura</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Obras"> Obras</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Mercaderías"> Mercaderías</label>
+          </fieldset>
+
+          <label>Producto / Servicio solicitado
+            <input type="text" id="f_producto" required>
+          </label>
+
+          <label>Cantidad
+            <input type="number" id="f_cantidad" min="1" step="1" required>
+          </label>
+
+          <label>Fecha en que se necesita
+            <input type="date" id="f_fechaNecesaria" required>
+          </label>
+
+          <label>Motivo / Justificación
+            <textarea id="f_motivo" rows="3" required></textarea>
+          </label>
+
+          <label>Características / Especificaciones
+            <textarea id="f_caracteristicas" rows="3"></textarea>
+          </label>
+
+          <label>Adjuntos (fotos, medidas, documentación)
+            <input type="file" id="f_adjuntos" accept="image/*" capture="environment" multiple>
+          </label>
+          <div id="f_adjuntosPreview" class="adjuntos-preview"></div>
+
+          <fieldset>
+            <legend>¿Es urgente?</legend>
+            <label class="radio"><input type="radio" name="f_urgente" value="si" onchange="toggleMotivoUrgencia()"> Sí</label>
+            <label class="radio"><input type="radio" name="f_urgente" value="no" checked onchange="toggleMotivoUrgencia()"> No</label>
+          </fieldset>
+
+          <label id="f_motivoUrgenciaWrap" style="display:none">
+            Motivo de la urgencia
+            <input type="text" id="f_motivoUrgencia">
+          </label>
+
+          <button type="submit">Generar solicitud</button>
+          <div id="f_msg" class="msg"></div>
+        </form>
       </div>
       <div id="tab-generadas" class="tab-content">
-        <p class="placeholder">Acá van las órdenes generadas (próximo paso)</p>
+        <p class="placeholder" id="generadasVacio">Todavía no generaste ninguna solicitud.</p>
+        <div id="listaGeneradas"></div>
       </div>
       <div id="tab-historial" class="tab-content">
         <p class="placeholder">Acá va el historial de órdenes enviadas (próximo paso)</p>
@@ -151,6 +241,7 @@
 <script>
   const USUARIO_DEMO = "demo-oc";
   const CLAVE_DEMO = "123456";
+  let adjuntosTemp = [];
 
   function intentarLogin() {
     const user = document.getElementById('loginUser').value.trim();
@@ -161,6 +252,8 @@
       errorBox.textContent = "";
       document.getElementById('loginScreen').style.display = "none";
       document.getElementById('app').style.display = "flex";
+      document.getElementById('f_fecha').value = hoyISO();
+      renderGeneradas();
     } else {
       errorBox.textContent = "Usuario o contraseña incorrectos";
     }
@@ -179,6 +272,114 @@
     document.getElementById('tab-' + id).classList.add('active');
     document.getElementById('nav-' + id).classList.add('active');
     document.getElementById('tabTitle').textContent = TITULOS[id];
+  }
+
+  function hoyISO() {
+    const d = new Date();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mes + '-' + dia;
+  }
+
+  function toggleMotivoUrgencia() {
+    const sel = document.querySelector('input[name="f_urgente"]:checked');
+    const urgente = sel ? sel.value : 'no';
+    document.getElementById('f_motivoUrgenciaWrap').style.display = urgente === 'si' ? 'block' : 'none';
+  }
+
+  document.getElementById('f_adjuntos').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    adjuntosTemp = [];
+    const preview = document.getElementById('f_adjuntosPreview');
+    preview.innerHTML = '';
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        adjuntosTemp.push({ nombre: file.name, dataUrl: ev.target.result });
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  function generarId() {
+    return 'oc' + Date.now();
+  }
+
+  function guardarSolicitud(event) {
+    event.preventDefault();
+    const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
+    const urgenteEl = document.querySelector('input[name="f_urgente"]:checked');
+    const msg = document.getElementById('f_msg');
+
+    if (!categoriaEl) {
+      msg.textContent = 'Elegí una categoría';
+      msg.className = 'msg error';
+      return false;
+    }
+
+    const solicitud = {
+      id: generarId(),
+      eess: document.getElementById('f_eess').value.trim(),
+      encargado: document.getElementById('f_encargado').value.trim(),
+      fecha: document.getElementById('f_fecha').value,
+      categoria: categoriaEl.value,
+      producto: document.getElementById('f_producto').value.trim(),
+      cantidad: document.getElementById('f_cantidad').value,
+      fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
+      motivo: document.getElementById('f_motivo').value.trim(),
+      caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
+      adjuntos: adjuntosTemp,
+      urgente: urgenteEl ? urgenteEl.value : 'no',
+      motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
+      estado: 'generada',
+      creada: new Date().toISOString()
+    };
+
+    const lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
+    lista.push(solicitud);
+    localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+
+    document.getElementById('formSolicitud').reset();
+    adjuntosTemp = [];
+    document.getElementById('f_adjuntosPreview').innerHTML = '';
+    document.getElementById('f_fecha').value = hoyISO();
+    toggleMotivoUrgencia();
+
+    msg.textContent = 'Solicitud generada correctamente';
+    msg.className = 'msg ok';
+
+    renderGeneradas();
+    return false;
+  }
+
+  function renderGeneradas() {
+    const lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
+    const cont = document.getElementById('listaGeneradas');
+    const vacio = document.getElementById('generadasVacio');
+    cont.innerHTML = '';
+
+    if (lista.length === 0) {
+      vacio.style.display = 'block';
+      return;
+    }
+    vacio.style.display = 'none';
+
+    lista.slice().reverse().forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        '<div class="card-top">' +
+          '<span class="card-title">' + s.producto + (s.urgente === 'si' ? '<span class="badge-urgente">Urgente</span>' : '') + '</span>' +
+          '<span class="card-date">' + s.fecha + '</span>' +
+        '</div>' +
+        '<div class="card-row">' + s.eess + ' · ' + s.categoria + '</div>' +
+        '<div class="card-row">Cantidad: ' + s.cantidad + '</div>' +
+        '<div class="card-row">Encargado: ' + s.encargado + '</div>';
+      cont.appendChild(card);
+    });
   }
 </script>
 
