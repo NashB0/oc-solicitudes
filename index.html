@@ -159,6 +159,26 @@
     50% { opacity:0.55; }
   }
   #dictadoEstado { margin-bottom:16px; }
+  .card .btn-generar-pdf {
+    margin-top:10px;
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:6px;
+    background: var(--gold);
+    color:#121212;
+    font-weight:bold;
+    font-size:12px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .card .card-estado {
+    font-size:10px;
+    color: var(--text-dim);
+    margin-top:8px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
 </style>
 </head>
 <body>
@@ -247,7 +267,8 @@
         <div id="listaGeneradas"></div>
       </div>
       <div id="tab-historial" class="tab-content">
-        <p class="placeholder">Acá va el historial de órdenes enviadas (próximo paso)</p>
+        <p class="placeholder" id="historialVacio">Todavía no enviaste ninguna orden.</p>
+        <div id="listaHistorial"></div>
       </div>
     </main>
     <nav class="bottom-nav">
@@ -266,6 +287,7 @@
     </nav>
   </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   const USUARIO_DEMO = "demo-oc";
   const CLAVE_DEMO = "123456";
@@ -297,6 +319,7 @@
       document.getElementById('app').style.display = "flex";
       document.getElementById('f_fecha').value = hoyISO();
       renderGeneradas();
+      renderHistorial();
     } else {
       errorBox.textContent = "Usuario o contraseña incorrectos";
     }
@@ -546,16 +569,11 @@
         creada: new Date().toISOString()
       };
 
-      let lista;
-      try {
-        lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
-      } catch (parseErr) {
-        lista = [];
-      }
+      const lista = obtenerSolicitudes();
       lista.push(solicitud);
 
       try {
-        localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+        guardarSolicitudes(lista);
       } catch (err) {
         msg.textContent = 'No se pudo guardar: las fotos ocupan demasiado espacio. Sacá menos fotos o de menor calidad e intentá de nuevo.';
         msg.className = 'msg error';
@@ -580,8 +598,20 @@
     }
   }
 
+  function obtenerSolicitudes() {
+    try {
+      return JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function guardarSolicitudes(lista) {
+    localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+  }
+
   function renderGeneradas() {
-    const lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
+    const lista = obtenerSolicitudes().filter(s => s.estado === 'generada');
     const cont = document.getElementById('listaGeneradas');
     const vacio = document.getElementById('generadasVacio');
     cont.innerHTML = '';
@@ -602,9 +632,137 @@
         '</div>' +
         '<div class="card-row">' + s.eess + ' · ' + s.categoria + '</div>' +
         '<div class="card-row">Cantidad: ' + s.cantidad + '</div>' +
-        '<div class="card-row">Encargado: ' + s.encargado + '</div>';
+        '<div class="card-row">Encargado: ' + s.encargado + '</div>' +
+        '<button class="btn-generar-pdf" onclick="enviarSolicitud(\'' + s.id + '\')">Generar orden de compra (PDF)</button>';
       cont.appendChild(card);
     });
+  }
+
+  function renderHistorial() {
+    const lista = obtenerSolicitudes().filter(s => s.estado === 'enviada');
+    const cont = document.getElementById('listaHistorial');
+    const vacio = document.getElementById('historialVacio');
+    cont.innerHTML = '';
+
+    if (lista.length === 0) {
+      vacio.style.display = 'block';
+      return;
+    }
+    vacio.style.display = 'none';
+
+    lista.slice().reverse().forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        '<div class="card-top">' +
+          '<span class="card-title">' + s.producto + (s.urgente === 'si' ? '<span class="badge-urgente">Urgente</span>' : '') + '</span>' +
+          '<span class="card-date">' + s.fecha + '</span>' +
+        '</div>' +
+        '<div class="card-row">' + s.eess + ' · ' + s.categoria + '</div>' +
+        '<div class="card-row">Cantidad: ' + s.cantidad + '</div>' +
+        '<div class="card-row">Encargado: ' + s.encargado + '</div>' +
+        '<div class="card-estado">Orden enviada</div>' +
+        '<button class="btn-generar-pdf" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
+      cont.appendChild(card);
+    });
+  }
+
+  function generarPDFOrden(solicitud) {
+    const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFCtor) {
+      throw new Error('No se pudo cargar la librería de PDF (revisá tu conexión a internet)');
+    }
+    const doc = new jsPDFCtor();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.text('ORDEN DE COMPRA', 105, y, { align: 'center' });
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text('N.° ' + solicitud.id, 105, y, { align: 'center' });
+    y += 14;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+
+    function linea(etiqueta, valor) {
+      doc.setFont(undefined, 'bold');
+      doc.text(etiqueta + ':', 15, y);
+      doc.setFont(undefined, 'normal');
+      const texto = doc.splitTextToSize(valor || '-', 125);
+      doc.text(texto, 62, y);
+      y += 7 * texto.length;
+    }
+
+    linea('EESS / Destino', solicitud.eess);
+    linea('Encargado', solicitud.encargado);
+    linea('Fecha', solicitud.fecha);
+    linea('Categoría', solicitud.categoria);
+    linea('Producto / Servicio', solicitud.producto);
+    linea('Cantidad', String(solicitud.cantidad));
+    linea('Fecha en que se necesita', solicitud.fechaNecesaria);
+    linea('Motivo / Justificación', solicitud.motivo);
+    linea('Características', solicitud.caracteristicas || '-');
+    linea('Urgente', solicitud.urgente === 'si' ? ('Sí — ' + (solicitud.motivoUrgencia || '')) : 'No');
+
+    y += 6;
+
+    if (solicitud.adjuntos && solicitud.adjuntos.length) {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFont(undefined, 'bold');
+      doc.text('Adjuntos:', 15, y);
+      y += 8;
+      doc.setFont(undefined, 'normal');
+
+      const anchoImg = 60;
+      const altoImg = 45;
+      let x = 15;
+      solicitud.adjuntos.forEach(adj => {
+        if (x + anchoImg > 195) { x = 15; y += altoImg + 8; }
+        if (y + altoImg > 280) { doc.addPage(); y = 20; x = 15; }
+        try {
+          doc.addImage(adj.dataUrl, 'JPEG', x, y, anchoImg, altoImg);
+        } catch (e) {
+          // si una imagen puntual falla, seguimos con el resto
+        }
+        x += anchoImg + 10;
+      });
+    }
+
+    doc.save('orden-de-compra-' + solicitud.id + '.pdf');
+  }
+
+  function enviarSolicitud(id) {
+    const lista = obtenerSolicitudes();
+    const idx = lista.findIndex(s => s.id === id);
+    if (idx === -1) return;
+
+    try {
+      generarPDFOrden(lista[idx]);
+    } catch (err) {
+      alert('No se pudo generar el PDF: ' + err.message);
+      return;
+    }
+
+    lista[idx].estado = 'enviada';
+    lista[idx].fechaEnvio = new Date().toISOString();
+    guardarSolicitudes(lista);
+
+    renderGeneradas();
+    renderHistorial();
+  }
+
+  function descargarPDFDeNuevo(id) {
+    const lista = obtenerSolicitudes();
+    const solicitud = lista.find(s => s.id === id);
+    if (!solicitud) return;
+    try {
+      generarPDFOrden(solicitud);
+    } catch (err) {
+      alert('No se pudo generar el PDF: ' + err.message);
+    }
   }
 </script>
 
