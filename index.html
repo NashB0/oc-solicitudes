@@ -124,6 +124,7 @@
   .msg.error { color:#e05c5c; }
   .adjuntos-preview { display:flex; flex-wrap:wrap; gap:8px; margin: -6px 0 14px; }
   .adjuntos-preview img { width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid #333; }
+  .adjuntos-preview .file-chip { font-size:11px; color:var(--text-dim); border:1px solid #333; padding:4px 8px; border-radius:6px; }
 
   .card {
     background:var(--bg-card); border:1px solid #262626; border-radius:10px;
@@ -287,20 +288,48 @@
     document.getElementById('f_motivoUrgenciaWrap').style.display = urgente === 'si' ? 'block' : 'none';
   }
 
+  function comprimirImagen(file, maxWidth, calidad) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+          let w = img.width, h = img.height;
+          if (w > maxWidth) {
+            h = Math.round(h * (maxWidth / w));
+            w = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', calidad));
+        };
+        img.onerror = function() { reject(new Error('No se pudo leer la imagen')); };
+        img.src = ev.target.result;
+      };
+      reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
   document.getElementById('f_adjuntos').addEventListener('change', function(e) {
     const files = Array.from(e.target.files);
     adjuntosTemp = [];
     const preview = document.getElementById('f_adjuntosPreview');
     preview.innerHTML = '';
     files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        adjuntosTemp.push({ nombre: file.name, dataUrl: ev.target.result });
+      comprimirImagen(file, 1000, 0.6).then(dataUrl => {
+        adjuntosTemp.push({ nombre: file.name, dataUrl: dataUrl });
         const img = document.createElement('img');
-        img.src = ev.target.result;
+        img.src = dataUrl;
         preview.appendChild(img);
-      };
-      reader.readAsDataURL(file);
+      }).catch(function() {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.textContent = file.name + ' (no se pudo procesar)';
+        preview.appendChild(chip);
+      });
     });
   });
 
@@ -340,7 +369,13 @@
 
     const lista = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
     lista.push(solicitud);
-    localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+    try {
+      localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
+    } catch (err) {
+      msg.textContent = 'No se pudo guardar: las fotos ocupan demasiado espacio. Sacá menos fotos o de menor calidad e intentá de nuevo.';
+      msg.className = 'msg error';
+      return false;
+    }
 
     document.getElementById('formSolicitud').reset();
     adjuntosTemp = [];
