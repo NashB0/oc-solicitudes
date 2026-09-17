@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OC Solicitudes</title>
+<meta name="theme-color" content="#c9a86a">
+<style>
+  :root {
+    --gold: #c9a86a;
+    --bg: #121212;
+    --bg-card: #1e1e1e;
+    --text: #f5f5f5;
+    --text-dim: #999;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  #loginScreen {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    gap:16px;
+  }
+  #loginScreen .logo { font-size:48px; margin-bottom:8px; }
+  #loginScreen h1 {
+    font-size:20px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color: var(--gold);
+    margin-bottom:24px;
+  }
+  #loginScreen input {
+    width:100%;
+    max-width:320px;
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:8px;
+    border:1px solid #333;
+    background:var(--bg-card);
+    color:var(--text);
+    font-size:16px;
+  }
+  #loginScreen button {
+    width:100%;
+    max-width:320px;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    background:var(--gold);
+    color:#121212;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-size:15px;
+  }
+  #loginError { color:#e05c5c; font-size:13px; min-height:18px; }
+  #app { display:none; flex-direction:column; flex:1; min-height:100vh; }
+  header {
+    padding:18px 16px 14px;
+    text-align:center;
+    border-bottom:1px solid #262626;
+  }
+  header h1 {
+    font-size:16px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color: var(--gold);
+  }
+  main { flex:1; padding:16px; padding-bottom:90px; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+  .placeholder { color: var(--text-dim); text-align:center; margin-top:60px; font-size:14px; }
+  nav.bottom-nav {
+    position:fixed;
+    bottom:0; left:0; right:0;
+    display:flex;
+    background: var(--bg-card);
+    border-top:1px solid #262626;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  nav.bottom-nav button {
+    flex:1;
+    background:none;
+    border:none;
+    color: var(--text-dim);
+    padding:12px 4px 10px;
+    font-size:11px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+  nav.bottom-nav button.active { color: var(--gold); }
+  nav.bottom-nav svg { width:22px; height:22px; }
+</style>
+</head>
+<body>
+
+  <div id="loginScreen">
+    <div class="logo">⛽</div>
+    <h1>OC Solicitudes</h1>
+    <input type="text" id="loginUser" placeholder="Usuario" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <button onclick="intentarLogin()">Ingresar</button>
+    <div id="loginError"></div>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1 id="tabTitle">Inicio</h1>
+    </header>
+    <main>
+      <div id="tab-inicio" class="tab-content active">
+        <p class="placeholder">Acá va el formulario de solicitud (próximo paso)</p>
+      </div>
+      <div id="tab-generadas" class="tab-content">
+        <p class="placeholder">Acá van las órdenes generadas (próximo paso)</p>
+      </div>
+      <div id="tab-historial" class="tab-content">
+        <p class="placeholder">Acá va el historial de órdenes enviadas (próximo paso)</p>
+      </div>
+    </main>
+    <nav class="bottom-nav">
+      <button id="nav-inicio" class="active" onclick="mostrarTab('inicio')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        Inicio
+      </button>
+      <button id="nav-generadas" onclick="mostrarTab('generadas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Generadas
+      </button>
+      <button id="nav-historial" onclick="mostrarTab('historial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+      </button>
+    </nav>
+  </div>
+
+<script>
+  const USUARIO_DEMO = "demo-oc";
+  const CLAVE_DEMO = "123456";
+
+  function intentarLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+    const errorBox = document.getElementById('loginError');
+
+    if (user === USUARIO_DEMO && pass === CLAVE_DEMO) {
+      errorBox.textContent = "";
+      document.getElementById('loginScreen').style.display = "none";
+      document.getElementById('app').style.display = "flex";
+    } else {
+      errorBox.textContent = "Usuario o contraseña incorrectos";
+    }
+  }
+
+  const TITULOS = {
+    inicio: "Inicio",
+    generadas: "Órdenes generadas",
+    historial: "Historial de Órdenes Enviadas"
+  };
+
+  function mostrarTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav button').forEach(el => el.classList.remove('active'));
+
+    document.getElementById('tab-' + id).classList.add('active');
+    document.getElementById('nav-' + id).classList.add('active');
+    document.getElementById('tabTitle').textContent = TITULOS[id];
+  }
+</script>
+
+</body>
+</html>
