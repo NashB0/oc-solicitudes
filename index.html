@@ -79,9 +79,52 @@
     font-size:15px;
   }
   #loginError { color:#e05c5c; font-size:13px; min-height:18px; }
+  .pass-wrap {
+    position:relative;
+    width:100%;
+    max-width:320px;
+    margin-bottom:12px;
+  }
+  #loginScreen .pass-wrap input {
+    max-width:none;
+    margin-bottom:0;
+    padding-right:52px;
+  }
+  #loginScreen .btn-ojo {
+    position:absolute;
+    top:0; right:0; bottom:0;
+    width:48px;
+    max-width:none;
+    padding:0;
+    border:none;
+    border-radius:0 8px 8px 0;
+    background:transparent;
+    box-shadow:none;
+    color: var(--text-dim);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #loginScreen .btn-ojo.activo { color: var(--gold); }
+  #loginScreen .btn-ojo svg { width:22px; height:22px; }
+  .btn-salir {
+    position:absolute;
+    top:50%; right:12px;
+    transform:translateY(-50%);
+    background:transparent;
+    border:1px solid #333;
+    border-radius:8px;
+    color: var(--text-dim);
+    padding:7px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .btn-salir svg { width:20px; height:20px; }
   #app { display:none; flex-direction:column; flex:1; min-height:100vh; }
   header {
-    padding:18px 16px 14px;
+    position:relative;
+    padding:18px 60px 14px;
     text-align:center;
     border-bottom:1px solid #262626;
   }
@@ -341,7 +384,12 @@
     <img class="logo" src="icon-192.png" alt="OC Solicitudes">
     <h1 class="texto-metal">OC Solicitudes</h1>
     <input type="email" id="loginUser" placeholder="Email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <div class="pass-wrap">
+      <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+      <button type="button" id="btnOjo" class="btn-ojo" onclick="alternarVerPass()" aria-label="Mostrar contraseña">
+        <svg id="iconoOjo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
     <div id="loginError"></div>
   </div>
@@ -349,6 +397,9 @@
   <div id="app">
     <header>
       <h1 id="tabTitle" class="texto-metal">Inicio</h1>
+      <button type="button" class="btn-salir" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
     </header>
     <main>
       <div id="tab-inicio" class="tab-content active">
@@ -537,6 +588,45 @@
         btnLogin.disabled = false;
         btnLogin.textContent = 'Ingresar';
       });
+  }
+
+  const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
+  const SVG_OJO_TACHADO = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
+
+  function alternarVerPass() {
+    const input = document.getElementById('loginPass');
+    const btn = document.getElementById('btnOjo');
+    const icono = document.getElementById('iconoOjo');
+    const mostrar = input.type === 'password';
+    input.type = mostrar ? 'text' : 'password';
+    icono.innerHTML = mostrar ? SVG_OJO_TACHADO : SVG_OJO_ABIERTO;
+    btn.classList.toggle('activo', mostrar);
+    btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  }
+
+  function cerrarSesion() {
+    if (!confirm('¿Querés cerrar sesión?')) return;
+
+    auth.signOut().catch(function() {});
+    usuarioActual = null;
+
+    document.getElementById('formSolicitud').reset();
+    adjuntosTemp = [];
+    renderAdjuntosPreview();
+    toggleMotivoUrgencia();
+    document.getElementById('f_msg').textContent = '';
+    document.getElementById('dictadoEstado').textContent = '';
+    document.getElementById('listaGeneradas').innerHTML = '';
+    document.getElementById('listaHistorial').innerHTML = '';
+    mostrarTab('inicio');
+
+    const pass = document.getElementById('loginPass');
+    pass.value = '';
+    if (pass.type === 'text') alternarVerPass();
+    document.getElementById('loginError').textContent = '';
+
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
   }
 
   function aplicarDatosUsuarioAlFormulario() {
