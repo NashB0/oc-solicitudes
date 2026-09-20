@@ -126,6 +126,12 @@
     background:var(--bg-card); color:var(--text); font-size:15px; font-family:inherit;
   }
   form textarea { resize:vertical; }
+  form input.campo-fijo {
+    background:#171717;
+    color: var(--gold-light);
+    border-color:#2a2a2a;
+    cursor:not-allowed;
+  }
   fieldset { border:1px solid #333; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
   fieldset legend { padding:0 6px; font-size:13px; color:var(--text-dim); }
   label.radio { display:inline-flex; align-items:center; gap:6px; margin-right:14px; margin-bottom:6px; font-size:14px; color:var(--text); }
@@ -351,11 +357,11 @@
           <div id="dictadoEstado" class="msg"></div>
 
           <label>EESS / Destino
-            <input type="text" id="f_eess" required>
+            <input type="text" id="f_eess" class="campo-fijo" readonly required>
           </label>
 
           <label>Encargado
-            <input type="text" id="f_encargado" required>
+            <input type="text" id="f_encargado" class="campo-fijo" readonly required>
           </label>
 
           <label>Fecha
@@ -515,11 +521,12 @@
         usuarioActual = {
           email: docUsuario.id,
           rol: datos.rol,
-          estacion: datos.estacion || null
+          estacion: datos.estacion || '',
+          nombre: datos.nombre || ''
         };
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        document.getElementById('f_fecha').value = hoyISO();
+        aplicarDatosUsuarioAlFormulario();
         renderGeneradas();
         renderHistorial();
       })
@@ -530,6 +537,13 @@
         btnLogin.disabled = false;
         btnLogin.textContent = 'Ingresar';
       });
+  }
+
+  function aplicarDatosUsuarioAlFormulario() {
+    if (!usuarioActual) return;
+    document.getElementById('f_eess').value = usuarioActual.estacion;
+    document.getElementById('f_encargado').value = usuarioActual.nombre;
+    document.getElementById('f_fecha').value = hoyISO();
   }
 
   const TITULOS = {
@@ -708,8 +722,8 @@
   }
 
   const CAMPOS_VOZ = [
-    { clave: 'eess', patrones: ['estacion', 'eess', 'destino'], targetId: 'f_eess' },
-    { clave: 'encargado', patrones: ['encargado'], targetId: 'f_encargado' },
+    { clave: 'eess', patrones: ['estacion', 'eess', 'destino'] },
+    { clave: 'encargado', patrones: ['encargado'] },
     { clave: 'categoria', patrones: ['categoria'] },
     { clave: 'producto', patrones: ['producto', 'servicio'], targetId: 'f_producto' },
     { clave: 'cantidad', patrones: ['cantidad'], targetId: 'f_cantidad' },
@@ -815,7 +829,7 @@
     reconocimientoVoz.interimResults = false;
 
     btn.classList.add('grabando');
-    estado.textContent = 'Escuchando... decí, por ejemplo: "estación Triángulo, encargado Javier Pérez, categoría insumos, producto detergente, cantidad 200, motivo reposición de stock"';
+    estado.textContent = 'Escuchando... decí, por ejemplo: "categoría insumos, producto detergente, cantidad 200, motivo reposición de stock"';
     estado.className = 'msg';
 
     reconocimientoVoz.onresult = function(event) {
@@ -871,7 +885,8 @@
         urgente: urgenteEl ? urgenteEl.value : 'no',
         motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
         estado: 'generada',
-        creada: new Date().toISOString()
+        creada: new Date().toISOString(),
+        creadoPor: usuarioActual ? usuarioActual.email : ''
       };
 
       const lista = obtenerSolicitudes();
@@ -888,7 +903,7 @@
       document.getElementById('formSolicitud').reset();
       adjuntosTemp = [];
       renderAdjuntosPreview();
-      document.getElementById('f_fecha').value = hoyISO();
+      aplicarDatosUsuarioAlFormulario();
       toggleMotivoUrgencia();
 
       msg.textContent = 'Solicitud generada correctamente';
@@ -915,8 +930,13 @@
     localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
   }
 
+  function esDelUsuarioActual(s) {
+    if (!usuarioActual) return false;
+    return s.creadoPor === usuarioActual.email;
+  }
+
   function renderGeneradas() {
-    const lista = obtenerSolicitudes().filter(s => s.estado === 'generada');
+    const lista = obtenerSolicitudes().filter(s => s.estado === 'generada' && esDelUsuarioActual(s));
     const cont = document.getElementById('listaGeneradas');
     const vacio = document.getElementById('generadasVacio');
     cont.innerHTML = '';
@@ -944,7 +964,7 @@
   }
 
   function renderHistorial() {
-    const lista = obtenerSolicitudes().filter(s => s.estado === 'enviada');
+    const lista = obtenerSolicitudes().filter(s => s.estado === 'enviada' && esDelUsuarioActual(s));
     const cont = document.getElementById('listaHistorial');
     const vacio = document.getElementById('historialVacio');
     cont.innerHTML = '';
