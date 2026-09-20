@@ -334,9 +334,9 @@
   <div id="loginScreen">
     <img class="logo" src="icon-192.png" alt="OC Solicitudes">
     <h1 class="texto-metal">OC Solicitudes</h1>
-    <input type="text" id="loginUser" placeholder="Usuario" autocomplete="username">
+    <input type="email" id="loginUser" placeholder="Email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false">
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
-    <button onclick="intentarLogin()">Ingresar</button>
+    <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
     <div id="loginError"></div>
   </div>
 
@@ -436,9 +436,23 @@
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <script>
-  const USUARIO_DEMO = "demo-oc";
-  const CLAVE_DEMO = "123456";
+  const firebaseConfig = {
+    apiKey: "AIzaSyAlRVgYaty5lVVVBPrUa13M53_p7V0ah-g",
+    authDomain: "oc-solicitudes.firebaseapp.com",
+    projectId: "oc-solicitudes",
+    storageBucket: "oc-solicitudes.firebasestorage.app",
+    messagingSenderId: "782963757998",
+    appId: "1:782963757998:web:83f24fa6ebcdd39aba2e3f"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let usuarioActual = null;
   let adjuntosTemp = [];
 
   window.addEventListener('error', function(e) {
@@ -456,21 +470,66 @@
     }
   });
 
+  function mensajeErrorLogin(codigo) {
+    switch (codigo) {
+      case 'auth/invalid-email':
+        return 'El email no es válido.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Usuario o contraseña incorrectos.';
+      case 'auth/too-many-requests':
+        return 'Demasiados intentos. Esperá un momento y probá de nuevo.';
+      case 'auth/network-request-failed':
+        return 'No hay conexión a internet. Probá de nuevo.';
+      default:
+        return 'No se pudo iniciar sesión (' + codigo + ').';
+    }
+  }
+
   function intentarLogin() {
-    const user = document.getElementById('loginUser').value.trim();
+    const email = document.getElementById('loginUser').value.trim().toLowerCase();
     const pass = document.getElementById('loginPass').value.trim();
     const errorBox = document.getElementById('loginError');
+    const btnLogin = document.getElementById('btnLogin');
 
-    if (user === USUARIO_DEMO && pass === CLAVE_DEMO) {
-      errorBox.textContent = "";
-      document.getElementById('loginScreen').style.display = "none";
-      document.getElementById('app').style.display = "flex";
-      document.getElementById('f_fecha').value = hoyISO();
-      renderGeneradas();
-      renderHistorial();
-    } else {
-      errorBox.textContent = "Usuario o contraseña incorrectos";
+    errorBox.textContent = '';
+    if (!email || !pass) {
+      errorBox.textContent = 'Completá el email y la contraseña';
+      return;
     }
+
+    btnLogin.disabled = true;
+    btnLogin.textContent = 'Ingresando...';
+
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(function(credencial) {
+        return db.collection('usuarios').doc(credencial.user.email).get();
+      })
+      .then(function(docUsuario) {
+        if (!docUsuario.exists) {
+          errorBox.textContent = 'Tu usuario no tiene un rol asignado. Avisale al administrador.';
+          return auth.signOut();
+        }
+        const datos = docUsuario.data();
+        usuarioActual = {
+          email: docUsuario.id,
+          rol: datos.rol,
+          estacion: datos.estacion || null
+        };
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('f_fecha').value = hoyISO();
+        renderGeneradas();
+        renderHistorial();
+      })
+      .catch(function(err) {
+        errorBox.textContent = mensajeErrorLogin(err.code);
+      })
+      .finally(function() {
+        btnLogin.disabled = false;
+        btnLogin.textContent = 'Ingresar';
+      });
   }
 
   const TITULOS = {
