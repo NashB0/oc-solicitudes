@@ -166,6 +166,23 @@
     gap:4px;
   }
   nav.bottom-nav button.active { color: var(--gold); }
+  nav.bottom-nav button { position:relative; }
+  .badge-nav {
+    display:none;
+    position:absolute;
+    top:6px; left:50%;
+    margin-left:6px;
+    min-width:18px; height:18px;
+    padding:0 5px;
+    border-radius:9px;
+    background:var(--rojo);
+    color:#fff;
+    font-size:11px;
+    font-weight:bold;
+    align-items:center;
+    justify-content:center;
+    letter-spacing:0;
+  }
   nav.bottom-nav svg { width:22px; height:22px; }
 
   /* ---------- Selector de tipo de compra ---------- */
@@ -425,6 +442,114 @@
     justify-content:center;
     flex-wrap:wrap;
   }
+
+  /* ---------- Paneles Compras / Gerencia ---------- */
+  .card-click { cursor:pointer; }
+  .card-click:active { border-color: var(--gold); }
+  .card .card-pie { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
+  .card .card-ver { font-size:12px; color: var(--gold); }
+  .card .card-motivo { color: var(--text-dim); }
+  .chip {
+    display:inline-block; font-size:10px; padding:3px 8px; border-radius:10px;
+    letter-spacing:0.5px; text-transform:uppercase; border:1px solid #444; color: var(--text-dim);
+  }
+  .chip-accion { border-color: var(--gold); color: var(--gold); }
+  .chip-espera { border-color:#6b8fd6; color:#9db6ec; }
+  .chip-ok { border-color:#58b86a; color:#8fdc9d; }
+  .chip-rechazo { border-color: var(--rojo); color:#f0a0a0; }
+  .chip-fin { border-color:#555; color:#aaa; }
+
+  .modal-detalle {
+    display:none;
+    position:fixed;
+    inset:0;
+    background: var(--bg);
+    z-index:900;
+    flex-direction:column;
+  }
+  .detalle-barra {
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px; border-bottom:1px solid #262626;
+  }
+  .detalle-barra button {
+    background:transparent; border:1px solid #333; color: var(--gold);
+    border-radius:8px; padding:8px 12px; font-size:13px; font-weight:bold;
+  }
+  .detalle-barra span { font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color: var(--text-dim); }
+  .detalle-cuerpo { flex:1; overflow-y:auto; padding:16px 16px 40px; }
+  .detalle-cab { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:14px; }
+  .detalle-cab h2 { font-size:18px; color: var(--gold); }
+  .detalle-seccion { background: var(--bg-card); border:1px solid #262626; border-radius:10px; padding:4px 14px; margin-bottom:12px; }
+  .dato { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid #262626; font-size:13px; }
+  .dato:last-child { border-bottom:none; }
+  .dato span { color: var(--text-dim); flex-shrink:0; }
+  .dato b { font-weight:normal; text-align:right; white-space:pre-wrap; word-break:break-word; }
+  .detalle-titulo { font-size:13px; letter-spacing:1px; text-transform:uppercase; color: var(--gold); margin:18px 0 10px; }
+  .detalle-nota { font-size:12px; color: var(--text-dim); margin:6px 0 10px; line-height:1.4; }
+  .detalle-info { font-size:13px; color:#9db6ec; margin:14px 0; text-align:center; }
+  .detalle-label { display:block; font-size:13px; color: var(--text-dim); margin:14px 0 4px; }
+  .detalle-label textarea, .presu-form input {
+    width:100%; margin-top:6px; padding:12px; border-radius:8px; border:1px solid #333;
+    background: var(--bg-card); color: var(--text); font-size:15px; font-family:inherit;
+  }
+  .presu-form { display:flex; flex-direction:column; gap:8px; margin:8px 0 14px; }
+  .presu-form input { margin-top:0; }
+  .presu {
+    display:flex; align-items:center; gap:12px;
+    background: var(--bg-card); border:1px solid #333; border-radius:10px;
+    padding:12px; margin-bottom:8px;
+  }
+  .presu input[type="radio"] { width:22px; height:22px; accent-color: var(--gold); flex-shrink:0; }
+  .presu-elegido { border-color:#58b86a; }
+  .presu-info { flex:1; display:flex; flex-direction:column; gap:3px; font-size:13px; }
+  .presu-monto { color: var(--gold-light); font-size:15px; }
+  .presu-obs { color: var(--text-dim); font-size:12px; }
+  .presu-marca { color:#8fdc9d; font-size:12px; }
+  .presu-quitar {
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--rojo);
+    background:transparent; color: var(--rojo); font-size:18px; line-height:1; flex-shrink:0;
+  }
+  .btn-contorno {
+    width:100%; padding:12px; border:2px solid var(--gold); border-radius:8px;
+    background:transparent; color: var(--gold); font-weight:bold; font-size:13px;
+    letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .btn-contorno:disabled { opacity:0.5; }
+  .btn-accion {
+    width:100%; padding:14px; border:none; border-radius:8px; margin-top:6px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:14px;
+  }
+  .btn-accion:disabled { opacity:0.45; }
+  .btn-rechazo {
+    width:100%; padding:14px; border:2px solid var(--rojo); border-radius:8px; margin-top:6px;
+    background:transparent; color:#f0a0a0; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:14px;
+  }
+  .btn-rechazo:disabled { opacity:0.45; }
+  .botones-fila { display:flex; gap:10px; }
+  .detalle-resolucion {
+    display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.4;
+    border-radius:10px; padding:12px; margin:14px 0; border:1px solid #444;
+  }
+  .detalle-resolucion.ok { border-color:#58b86a; color:#8fdc9d; }
+  .detalle-resolucion.rechazo { border-color: var(--rojo); color:#f0b0b0; }
+  .detalle-resolucion.fin { border-color:#555; color:#ccc; }
+  .aviso-caja textarea {
+    width:100%; padding:10px; border-radius:8px; border:1px solid #333;
+    background:#141414; color: var(--text); font-size:14px; font-family:inherit; resize:vertical;
+  }
+
+  .toast {
+    position:fixed; left:16px; right:16px; top:74px; z-index:1200;
+    background:#2a2416; border:1px solid var(--gold); color: var(--gold-light);
+    border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.4;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    opacity:0; transform:translateY(-10px); pointer-events:none;
+    transition: opacity .25s, transform .25s;
+  }
+  .toast.visible { opacity:1; transform:translateY(0); }
+  .toast.error { background:#2a1616; border-color: var(--rojo); color:#f3c0c0; }
 </style>
 </head>
 <body>
@@ -566,10 +691,14 @@
         <div id="listaHistorial"></div>
       </div>
 
-      <!-- ===== Pantalla provisoria para Compras / Gerencia ===== -->
-      <div id="tab-enConstruccion" class="tab-content">
-        <p class="placeholder" id="textoEnConstruccion"></p>
-      </div>
+      <!-- ===== Compras ===== -->
+      <div id="tab-cSolicitudes" class="tab-content"><div id="listaCSolicitudes"></div></div>
+      <div id="tab-cUrgencias" class="tab-content"><div id="listaCUrgencias"></div></div>
+      <div id="tab-cHistorial" class="tab-content"><div id="listaCHistorial"></div></div>
+
+      <!-- ===== Gerencia ===== -->
+      <div id="tab-gPorAprobar" class="tab-content"><div id="listaGPorAprobar"></div></div>
+      <div id="tab-gHistorial" class="tab-content"><div id="listaGHistorial"></div></div>
     </main>
     <nav class="bottom-nav" id="navEncargado">
       <button id="nav-inicio" class="active" onclick="mostrarTab('inicio')">
@@ -581,6 +710,35 @@
         Generadas
       </button>
       <button id="nav-historial" onclick="mostrarTab('historial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+      </button>
+    </nav>
+
+    <nav class="bottom-nav" id="navCompras" style="display:none">
+      <button id="nav-cSolicitudes" onclick="mostrarTab('cSolicitudes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Solicitudes
+        <span class="badge-nav" id="badgeCSolicitudes"></span>
+      </button>
+      <button id="nav-cUrgencias" onclick="mostrarTab('cUrgencias')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
+        Urgencias
+        <span class="badge-nav" id="badgeCUrgencias"></span>
+      </button>
+      <button id="nav-cHistorial" onclick="mostrarTab('cHistorial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+      </button>
+    </nav>
+
+    <nav class="bottom-nav" id="navGerencia" style="display:none">
+      <button id="nav-gPorAprobar" onclick="mostrarTab('gPorAprobar')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        Por aprobar
+        <span class="badge-nav" id="badgeGPorAprobar"></span>
+      </button>
+      <button id="nav-gHistorial" onclick="mostrarTab('gHistorial')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
         Historial
       </button>
@@ -618,6 +776,10 @@
   });
 
   function mostrarMensaje(texto, esError) {
+    if (usuarioActual && usuarioActual.rol !== 'encargado') {
+      mostrarToast(texto, esError);
+      return;
+    }
     const id = modoActual === 'urgencia' ? 'u_msg' : 'f_msg';
     const msg = document.getElementById(id);
     if (!msg) return;
@@ -676,7 +838,11 @@
         if (usuarioActual.rol === 'encargado') {
           return cargarListas().then(entrarComoEncargado);
         }
-        entrarComoOtroRol();
+        if (usuarioActual.rol === 'compras') return entrarComoCompras();
+        if (usuarioActual.rol === 'gerencia') return entrarComoGerencia();
+        errorBox.textContent = 'Tu usuario tiene un rol desconocido. Avisale al administrador.';
+        usuarioActual = null;
+        return auth.signOut();
       })
       .catch(function(err) {
         usuarioActual = null;
@@ -737,24 +903,12 @@
   function entrarComoEncargado() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    document.getElementById('navEncargado').style.display = 'flex';
+    mostrarNav('encargado');
     seleccionarModo('normal');
     ponerFechasDeHoy();
     mostrarTab('inicio');
     renderGeneradas();
     renderHistorial();
-  }
-
-  function entrarComoOtroRol() {
-    const nombres = { compras: 'Compras', gerencia: 'Gerencia' };
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('navEncargado').style.display = 'none';
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.getElementById('tab-enConstruccion').classList.add('active');
-    document.getElementById('tabTitle').textContent = nombres[usuarioActual.rol] || 'Panel';
-    document.getElementById('textoEnConstruccion').textContent =
-      'El panel de ' + (nombres[usuarioActual.rol] || 'tu usuario') + ' está en construcción.\nMuy pronto vas a poder usarlo desde acá.';
   }
 
   const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
@@ -784,6 +938,11 @@
     document.getElementById('listaGeneradas').innerHTML = '';
     document.getElementById('listaHistorial').innerHTML = '';
     cacheSolicitudes.clear();
+    detenerEscuchas();
+    cerrarDetalle();
+    datosSolicitudes = [];
+    datosUrgencias = [];
+    ['badgeCSolicitudes', 'badgeCUrgencias', 'badgeGPorAprobar'].forEach(function(id) { ponerBadge(id, 0); });
 
     const pass = document.getElementById('loginPass');
     pass.value = '';
@@ -798,8 +957,22 @@
   const TITULOS = {
     inicio: "Inicio",
     generadas: "Pendientes de firma",
-    historial: "Historial de envíos"
+    historial: "Historial de envíos",
+    cSolicitudes: "Solicitudes",
+    cUrgencias: "Compras de urgencia",
+    cHistorial: "Órdenes cerradas",
+    gPorAprobar: "Por aprobar",
+    gHistorial: "Historial"
   };
+
+  const NAV_POR_ROL = { encargado: 'navEncargado', compras: 'navCompras', gerencia: 'navGerencia' };
+  const TAB_INICIAL = { encargado: 'inicio', compras: 'cSolicitudes', gerencia: 'gPorAprobar' };
+
+  function mostrarNav(rol) {
+    Object.keys(NAV_POR_ROL).forEach(function(r) {
+      document.getElementById(NAV_POR_ROL[r]).style.display = r === rol ? 'flex' : 'none';
+    });
+  }
 
   function mostrarTab(id) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -808,6 +981,7 @@
     document.getElementById('tab-' + id).classList.add('active');
     document.getElementById('nav-' + id).classList.add('active');
     document.getElementById('tabTitle').textContent = TITULOS[id];
+    window.scrollTo(0, 0);
   }
 
   function seleccionarModo(modo) {
@@ -894,8 +1068,41 @@
     });
   }
 
+  function pedirTexto(titulo, texto, placeholder, textoSi) {
+    return new Promise(function(resolve) {
+      document.getElementById('avisoTitulo').textContent = titulo;
+      document.getElementById('avisoTexto').textContent = texto;
+      const extra = document.getElementById('avisoExtra');
+      extra.innerHTML = '<textarea id="avisoCampo" rows="3"></textarea>';
+      const campo = document.getElementById('avisoCampo');
+      campo.placeholder = placeholder;
+      const botones = document.getElementById('avisoBotones');
+      botones.innerHTML = '';
+      const no = document.createElement('button');
+      no.type = 'button';
+      no.className = 'btn-secundario';
+      no.textContent = 'Cancelar';
+      no.onclick = function() { cerrarAviso(); resolve(null); };
+      const si = document.createElement('button');
+      si.type = 'button';
+      si.className = 'btn-principal';
+      si.textContent = textoSi;
+      si.onclick = function() {
+        const valor = campo.value.trim();
+        if (!valor) { campo.focus(); campo.style.borderColor = 'var(--rojo)'; return; }
+        cerrarAviso();
+        resolve(valor);
+      };
+      botones.appendChild(no);
+      botones.appendChild(si);
+      document.getElementById('modalAviso').style.display = 'flex';
+      setTimeout(function() { campo.focus(); }, 50);
+    });
+  }
+
   function cerrarAviso() {
     document.getElementById('modalAviso').style.display = 'none';
+    document.getElementById('avisoExtra').innerHTML = '';
   }
 
   function mensajeErrorEnvio(err) {
@@ -1379,6 +1586,37 @@
     linea('Motivo / Justificación', solicitud.motivo);
     linea('Características', solicitud.caracteristicas || '-');
 
+    const presus = solicitud.presupuestos || [];
+    if (presus.length) {
+      y += 4;
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFont(undefined, 'bold');
+      doc.text('Presupuestos:', 15, y);
+      y += 7;
+      doc.setFont(undefined, 'normal');
+      presus.forEach(function(p, i) {
+        if (y > 275) { doc.addPage(); y = 20; }
+        const elegido = solicitud.presupuestoElegido === i && (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada');
+        const txt = (i + 1) + '. ' + p.proveedor + ' — ' + formatoPesos(p.monto) +
+          (p.observaciones ? ' (' + p.observaciones + ')' : '') + (elegido ? '   [APROBADO]' : '');
+        const lineas = doc.splitTextToSize(txt, 175);
+        doc.text(lineas, 20, y);
+        y += 6 * lineas.length;
+      });
+    }
+
+    if (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada') {
+      y += 2;
+      linea('Resolución de Gerencia', 'Aprobada' + (solicitud.resueltaEn ? ' el ' + fechaDeTimestamp(solicitud.resueltaEn) : ''));
+    }
+    if (solicitud.estado === 'rechazada') {
+      y += 2;
+      linea('Resolución de Gerencia', 'Rechazada — ' + (solicitud.motivoRechazo || ''));
+    }
+    if (solicitud.estado === 'finalizada') {
+      linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''));
+    }
+
     y += 6;
 
     if (solicitud.firma) {
@@ -1551,6 +1789,480 @@
       alert('No se pudo generar el PDF: ' + err.message);
     }
   }
+
+  // =====================================================================
+  // ---------- Paneles de Compras y Gerencia ----------
+  // =====================================================================
+  const ESTADOS = {
+    pendiente_compras: { texto: 'Pendiente de presupuesto', clase: 'chip-accion' },
+    en_gerencia: { texto: 'En revisión de Gerencia', clase: 'chip-espera' },
+    aprobada: { texto: 'Aprobada · realizar compra', clase: 'chip-ok' },
+    rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
+    finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    informada: { texto: 'Sin registrar', clase: 'chip-accion' },
+    registrada: { texto: 'Registrada', clase: 'chip-fin' }
+  };
+
+  let desuscribir = [];
+  let datosSolicitudes = [];
+  let datosUrgencias = [];
+  let estadosPrevios = null;
+  let urgenciasPrevias = null;
+  let idDetalleAbierto = null;
+
+  function chipEstado(estado) {
+    const e = ESTADOS[estado] || { texto: estado, clase: '' };
+    return '<span class="chip ' + e.clase + '">' + escaparHTML(e.texto) + '</span>';
+  }
+
+  function fechaDeTimestamp(ts) {
+    if (!ts) return '';
+    if (typeof ts.toDate === 'function') {
+      const d = ts.toDate();
+      return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+    }
+    return fechaCorta(ts);
+  }
+
+  function porCreadaDesc(a, b) {
+    return String(b.creada || '').localeCompare(String(a.creada || ''));
+  }
+
+  function mostrarToast(texto, esError) {
+    const t = document.getElementById('toast');
+    t.textContent = texto;
+    t.className = 'toast visible' + (esError ? ' error' : '');
+    clearTimeout(mostrarToast._timer);
+    mostrarToast._timer = setTimeout(function() { t.className = 'toast'; }, esError ? 6000 : 4000);
+  }
+
+  function prepararPanel(rol) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    mostrarNav(rol);
+    mostrarTab(TAB_INICIAL[rol]);
+    datosSolicitudes = [];
+    datosUrgencias = [];
+    estadosPrevios = null;
+    urgenciasPrevias = null;
+    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial'].forEach(function(id) {
+      document.getElementById(id).innerHTML = '<p class="placeholder">Cargando...</p>';
+    });
+  }
+
+  function entrarComoCompras() {
+    prepararPanel('compras');
+    escucharSolicitudes();
+    escucharUrgencias();
+  }
+
+  function entrarComoGerencia() {
+    prepararPanel('gerencia');
+    escucharSolicitudes();
+  }
+
+  function detenerEscuchas() {
+    desuscribir.forEach(function(f) { try { f(); } catch (e) {} });
+    desuscribir = [];
+  }
+
+  function errorDeEscucha(err) {
+    mostrarToast('No se pudieron cargar los datos: ' + mensajeErrorEnvio(err), true);
+  }
+
+  function escucharSolicitudes() {
+    const unsub = db.collection('solicitudes').onSnapshot(function(snap) {
+      datosSolicitudes = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      avisarCambiosSolicitudes();
+      renderPanel();
+    }, errorDeEscucha);
+    desuscribir.push(unsub);
+  }
+
+  function escucharUrgencias() {
+    const unsub = db.collection('urgencias').onSnapshot(function(snap) {
+      datosUrgencias = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      avisarCambiosUrgencias();
+      renderPanel();
+    }, errorDeEscucha);
+    desuscribir.push(unsub);
+  }
+
+  // Notificaciones dentro de la app: avisa lo que llega mientras la app está abierta.
+  function avisarCambiosSolicitudes() {
+    const actuales = {};
+    datosSolicitudes.forEach(function(s) { actuales[s.id] = s.estado; });
+    if (estadosPrevios) {
+      datosSolicitudes.forEach(function(s) {
+        if (estadosPrevios[s.id] === s.estado) return;
+        if (usuarioActual.rol === 'compras') {
+          if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'rechazada') mostrarToast('Gerencia rechazó: ' + s.producto + ' (' + s.eess + ')');
+        }
+        if (usuarioActual.rol === 'gerencia' && s.estado === 'en_gerencia') {
+          mostrarToast('Nueva orden para aprobar: ' + s.producto + ' (' + s.eess + ')');
+        }
+      });
+    }
+    estadosPrevios = actuales;
+  }
+
+  function avisarCambiosUrgencias() {
+    const actuales = {};
+    datosUrgencias.forEach(function(u) { actuales[u.id] = u.estado; });
+    if (urgenciasPrevias) {
+      datosUrgencias.forEach(function(u) {
+        if (!urgenciasPrevias[u.id]) mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
+      });
+    }
+    urgenciasPrevias = actuales;
+  }
+
+  function ponerBadge(id, cantidad) {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    b.style.display = cantidad > 0 ? 'flex' : 'none';
+  }
+
+  function tarjetaSolicitud(s) {
+    const n = (s.presupuestos || []).length;
+    return '<div class="card card-click" onclick="abrirDetalle(\'' + s.id + '\')">' +
+      '<div class="card-top">' +
+        '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
+        '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
+      '</div>' +
+      '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
+      '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + (n ? ' · Presupuestos: ' + n : '') + '</div>' +
+      '<div class="card-pie">' + chipEstado(s.estado) + '<span class="card-ver">Ver detalle ›</span></div>' +
+    '</div>';
+  }
+
+  function tarjetaUrgencia(u) {
+    return '<div class="card">' +
+      '<div class="card-top">' +
+        '<span class="card-title">' + escaparHTML(u.detalle) + '</span>' +
+        '<span class="card-date">' + fechaCorta(u.fechaCompra) + '</span>' +
+      '</div>' +
+      '<div class="card-row">' + escaparHTML(u.eess) + ' · ' + escaparHTML(u.encargado) + '</div>' +
+      '<div class="card-row"><b>' + formatoPesos(u.importe) + '</b> · ' + escaparHTML(u.proveedor) + '</div>' +
+      '<div class="card-row">Comprobante: ' + escaparHTML(u.comprobante) + '</div>' +
+      '<div class="card-row card-motivo">Motivo: ' + escaparHTML(u.motivo) + '</div>' +
+      '<div class="card-pie">' + chipEstado(u.estado) + '</div>' +
+      (u.estado === 'informada'
+        ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
+        : '') +
+    '</div>';
+  }
+
+  function llenarLista(id, items, fnTarjeta, textoVacio) {
+    const cont = document.getElementById(id);
+    cont.innerHTML = items.length
+      ? items.map(fnTarjeta).join('')
+      : '<p class="placeholder">' + escaparHTML(textoVacio) + '</p>';
+  }
+
+  function renderPanel() {
+    if (!usuarioActual) return;
+    const rol = usuarioActual.rol;
+    const todas = datosSolicitudes.slice().sort(porCreadaDesc);
+
+    if (rol === 'compras') {
+      const requierenAccion = todas.filter(s => s.estado === 'pendiente_compras' || s.estado === 'aprobada');
+      const enEspera = todas.filter(s => s.estado === 'en_gerencia');
+      const cerradas = todas.filter(s => s.estado === 'finalizada' || s.estado === 'rechazada');
+      llenarLista('listaCSolicitudes', requierenAccion.concat(enEspera), tarjetaSolicitud, 'No hay solicitudes en curso.');
+      llenarLista('listaCHistorial', cerradas, tarjetaSolicitud, 'Todavía no hay órdenes cerradas.');
+      ponerBadge('badgeCSolicitudes', requierenAccion.length);
+
+      const urg = datosUrgencias.slice().sort(porCreadaDesc);
+      const sinRegistrar = urg.filter(u => u.estado === 'informada');
+      const registradas = urg.filter(u => u.estado !== 'informada');
+      llenarLista('listaCUrgencias', sinRegistrar.concat(registradas), tarjetaUrgencia, 'No hay compras de urgencia informadas.');
+      ponerBadge('badgeCUrgencias', sinRegistrar.length);
+    }
+
+    if (rol === 'gerencia') {
+      const porAprobar = todas.filter(s => s.estado === 'en_gerencia');
+      const resueltas = todas.filter(s => ['aprobada', 'rechazada', 'finalizada'].indexOf(s.estado) !== -1);
+      llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
+      llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no resolviste ninguna orden.');
+      ponerBadge('badgeGPorAprobar', porAprobar.length);
+    }
+
+    if (idDetalleAbierto) renderDetalle();
+  }
+
+  // ---------- Detalle de una orden ----------
+  function abrirDetalle(id) {
+    idDetalleAbierto = id;
+    renderDetalle(true);
+    document.getElementById('modalDetalle').style.display = 'flex';
+    document.getElementById('detalleCuerpo').scrollTop = 0;
+  }
+
+  function cerrarDetalle() {
+    idDetalleAbierto = null;
+    document.getElementById('modalDetalle').style.display = 'none';
+  }
+
+  function filaDato(etiqueta, valor) {
+    return '<div class="dato"><span>' + escaparHTML(etiqueta) + '</span><b>' + escaparHTML(valor || '-') + '</b></div>';
+  }
+
+  function renderDetalle(esApertura) {
+    const s = datosSolicitudes.find(x => x.id === idDetalleAbierto);
+    const cuerpo = document.getElementById('detalleCuerpo');
+    if (!s) { cerrarDetalle(); return; }
+
+    // conservar lo que el usuario venía escribiendo si llega una actualización
+    const guardados = {};
+    if (!esApertura) {
+      ['p_proveedor', 'p_monto', 'p_obs', 'd_nota'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) guardados[id] = el.value;
+      });
+    }
+    const radioPrevio = esApertura ? null : document.querySelector('input[name="g_presu"]:checked');
+    const presuMarcado = radioPrevio ? radioPrevio.value : null;
+
+    const rol = usuarioActual.rol;
+    const presupuestos = s.presupuestos || [];
+    let html = '';
+
+    html += '<div class="detalle-cab"><h2>' + escaparHTML(s.producto) + '</h2>' + chipEstado(s.estado) + '</div>';
+
+    html += '<div class="detalle-seccion">' +
+      filaDato('EESS / Destino', s.eess) +
+      filaDato('Encargado', s.encargado) +
+      filaDato('Fecha', fechaCorta(s.fecha)) +
+      filaDato('Categoría', s.categoria) +
+      filaDato('Cantidad', String(s.cantidad)) +
+      filaDato('Se necesita para', fechaCorta(s.fechaNecesaria)) +
+      filaDato('Motivo', s.motivo) +
+      filaDato('Características', s.caracteristicas) +
+    '</div>';
+
+    html += '<button type="button" class="btn-contorno" onclick="descargarPDFPanel(\'' + s.id + '\')">Descargar PDF</button>';
+
+    // Presupuestos
+    const editable = rol === 'compras' && s.estado === 'pendiente_compras';
+    const eligiendo = rol === 'gerencia' && s.estado === 'en_gerencia';
+    html += '<h3 class="detalle-titulo">Presupuestos</h3>';
+    if (!presupuestos.length) {
+      html += '<p class="detalle-nota">' + (editable ? 'Todavía no cargaste presupuestos.' : 'Sin presupuestos cargados.') + '</p>';
+    }
+    presupuestos.forEach(function(p, i) {
+      const elegido = s.presupuestoElegido === i && (s.estado === 'aprobada' || s.estado === 'finalizada');
+      html += '<label class="presu' + (elegido ? ' presu-elegido' : '') + '">' +
+        (eligiendo ? '<input type="radio" name="g_presu" value="' + i + '">' : '') +
+        '<div class="presu-info">' +
+          '<b>' + escaparHTML(p.proveedor) + '</b>' +
+          '<span class="presu-monto">' + formatoPesos(p.monto) + '</span>' +
+          (p.observaciones ? '<span class="presu-obs">' + escaparHTML(p.observaciones) + '</span>' : '') +
+          (elegido ? '<span class="presu-marca">✔ Elegido por Gerencia</span>' : '') +
+        '</div>' +
+        (editable ? '<button type="button" class="presu-quitar" onclick="quitarPresupuesto(event, ' + i + ')" aria-label="Quitar">×</button>' : '') +
+      '</label>';
+    });
+
+    if (editable) {
+      html += '<div class="presu-form">' +
+        '<input type="text" id="p_proveedor" placeholder="Proveedor">' +
+        '<input type="number" id="p_monto" placeholder="Monto total ($)" min="1" step="0.01" inputmode="decimal">' +
+        '<input type="text" id="p_obs" placeholder="Observaciones (opcional)">' +
+        '<button type="button" class="btn-contorno" onclick="agregarPresupuesto(this)">+ Agregar presupuesto</button>' +
+      '</div>';
+      html += '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>';
+      if (!presupuestos.length) html += '<p class="detalle-nota">Cargá al menos un presupuesto para poder enviarla.</p>';
+    }
+
+    // Estado / resolución
+    if (s.estado === 'en_gerencia' && rol === 'compras') {
+      html += '<p class="detalle-info">Esperando la aprobación de Gerencia.</p>';
+    }
+    if (eligiendo) {
+      html += '<p class="detalle-nota">Elegí el presupuesto que aprobás, o rechazá la orden.</p>' +
+        '<div class="botones-fila">' +
+          '<button type="button" class="btn-rechazo" onclick="rechazarOrden(this)">Rechazar</button>' +
+          '<button type="button" class="btn-accion" onclick="aprobarOrden(this)">Aprobar</button>' +
+        '</div>';
+    }
+    if (s.estado === 'rechazada') {
+      html += '<div class="detalle-resolucion rechazo"><b>Rechazada por Gerencia</b>' +
+        '<span>Motivo: ' + escaparHTML(s.motivoRechazo) + '</span>' +
+        '<span>La orden quedó cerrada. Si hace falta, el encargado tiene que generar una nueva.</span></div>';
+    }
+    if (s.estado === 'aprobada' || s.estado === 'finalizada') {
+      html += '<div class="detalle-resolucion ok"><b>Aprobada por Gerencia' + (s.resueltaEn ? ' el ' + fechaDeTimestamp(s.resueltaEn) : '') + '</b></div>';
+    }
+    if (s.estado === 'aprobada' && rol === 'compras') {
+      html += '<label class="detalle-label">Nota de la compra (opcional)' +
+        '<textarea id="d_nota" rows="2" placeholder="Ej.: factura, fecha de entrega, etc."></textarea></label>' +
+        '<button type="button" class="btn-accion" onclick="finalizarCompra(this)">Marcar compra realizada</button>';
+    }
+    if (s.estado === 'aprobada' && rol === 'gerencia') {
+      html += '<p class="detalle-info">Compras tiene que realizar la compra.</p>';
+    }
+    if (s.estado === 'finalizada') {
+      html += '<div class="detalle-resolucion fin"><b>Compra realizada' + (s.finalizadaEn ? ' el ' + fechaDeTimestamp(s.finalizadaEn) : '') + '</b>' +
+        (s.notaCompra ? '<span>Nota: ' + escaparHTML(s.notaCompra) + '</span>' : '') + '</div>';
+    }
+
+    cuerpo.innerHTML = html;
+    Object.keys(guardados).forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.value = guardados[id];
+    });
+    if (presuMarcado !== null) {
+      const r = document.querySelector('input[name="g_presu"][value="' + presuMarcado + '"]');
+      if (r) r.checked = true;
+    }
+  }
+
+  function solicitudAbierta() {
+    return datosSolicitudes.find(x => x.id === idDetalleAbierto);
+  }
+
+  async function actualizarSolicitud(id, cambios, boton) {
+    if (boton) boton.disabled = true;
+    try {
+      await db.collection('solicitudes').doc(id).update(cambios);
+      return true;
+    } catch (err) {
+      mostrarToast(mensajeErrorEnvio(err), true);
+      if (boton) boton.disabled = false;
+      return false;
+    }
+  }
+
+  async function agregarPresupuesto(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const proveedor = document.getElementById('p_proveedor').value.trim();
+    const monto = Number(document.getElementById('p_monto').value);
+    const observaciones = document.getElementById('p_obs').value.trim();
+    if (!proveedor || !(monto > 0)) {
+      mostrarToast('Completá el proveedor y el monto del presupuesto.', true);
+      return;
+    }
+    const nuevos = (s.presupuestos || []).concat([{ proveedor: proveedor, monto: monto, observaciones: observaciones }]);
+    const ok = await actualizarSolicitud(s.id, { presupuestos: nuevos }, boton);
+    if (ok) {
+      ['p_proveedor', 'p_monto', 'p_obs'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      mostrarToast('Presupuesto agregado.');
+    }
+  }
+
+  async function quitarPresupuesto(evento, indice) {
+    evento.preventDefault();
+    evento.stopPropagation();
+    const s = solicitudAbierta();
+    if (!s) return;
+    const p = (s.presupuestos || [])[indice];
+    if (!p) return;
+    const ok = await pedirConfirmacion('Quitar presupuesto', '¿Querés quitar el presupuesto de ' + p.proveedor + ' por ' + formatoPesos(p.monto) + '?', 'Quitar');
+    if (!ok) return;
+    const nuevos = (s.presupuestos || []).filter(function(_, i) { return i !== indice; });
+    await actualizarSolicitud(s.id, { presupuestos: nuevos });
+  }
+
+  async function enviarAGerencia(boton) {
+    const s = solicitudAbierta();
+    if (!s || !(s.presupuestos || []).length) return;
+    const ok = await pedirConfirmacion('Enviar a Gerencia',
+      s.producto + ' (' + s.eess + ')\nCon ' + s.presupuestos.length + ' presupuesto(s).\nDespués de enviarla ya no vas a poder cambiar los presupuestos.',
+      'Enviar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'en_gerencia',
+      enviadaAGerenciaEn: firebase.firestore.FieldValue.serverTimestamp()
+    }, boton)) {
+      mostrarToast('Enviada a Gerencia.');
+    }
+  }
+
+  async function aprobarOrden(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const marcado = document.querySelector('input[name="g_presu"]:checked');
+    if (!marcado) {
+      mostrarToast('Elegí qué presupuesto aprobás.', true);
+      return;
+    }
+    const indice = parseInt(marcado.value, 10);
+    const p = s.presupuestos[indice];
+    const ok = await pedirConfirmacion('Aprobar orden',
+      s.producto + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'aprobada',
+      presupuestoElegido: indice,
+      resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      resueltaPor: usuarioActual.email
+    }, boton)) {
+      mostrarToast('Orden aprobada. Compras ya puede realizar la compra.');
+    }
+  }
+
+  async function rechazarOrden(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const motivo = await pedirTexto('Rechazar orden',
+      s.producto + ' (' + s.eess + ')\nContale a Compras por qué se rechaza:', 'Motivo del rechazo', 'Rechazar');
+    if (motivo === null) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'rechazada',
+      motivoRechazo: motivo,
+      resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      resueltaPor: usuarioActual.email
+    }, boton)) {
+      mostrarToast('Orden rechazada.');
+    }
+  }
+
+  async function finalizarCompra(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const nota = (document.getElementById('d_nota') || { value: '' }).value.trim();
+    const ok = await pedirConfirmacion('Compra realizada', '¿Confirmás que ya se realizó la compra de ' + s.producto + ' (' + s.eess + ')?', 'Confirmar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'finalizada',
+      finalizadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      notaCompra: nota
+    }, boton)) {
+      mostrarToast('Compra registrada como realizada.');
+    }
+  }
+
+  async function registrarUrgencia(id, boton) {
+    boton.disabled = true;
+    try {
+      await db.collection('urgencias').doc(id).update({
+        estado: 'registrada',
+        registradaEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      mostrarToast('Compra de urgencia registrada.');
+    } catch (err) {
+      boton.disabled = false;
+      mostrarToast(mensajeErrorEnvio(err), true);
+    }
+  }
+
+  function descargarPDFPanel(id) {
+    const s = datosSolicitudes.find(x => x.id === id);
+    if (!s) return;
+    try {
+      generarPDFOrden(s);
+    } catch (err) {
+      mostrarToast('No se pudo generar el PDF: ' + err.message, true);
+    }
+  }
 </script>
 
   <div id="modalFirma" class="modal-firma">
@@ -1571,13 +2283,24 @@
     </div>
   </div>
 
+  <div id="modalDetalle" class="modal-detalle">
+    <div class="detalle-barra">
+      <button type="button" onclick="cerrarDetalle()">‹ Volver</button>
+      <span>Detalle de la orden</span>
+    </div>
+    <div class="detalle-cuerpo" id="detalleCuerpo"></div>
+  </div>
+
   <div id="modalAviso" class="modal-aviso">
     <div class="aviso-caja">
       <h2 id="avisoTitulo" class="texto-metal"></h2>
       <p id="avisoTexto"></p>
+      <div id="avisoExtra"></div>
       <div class="aviso-botones" id="avisoBotones"></div>
     </div>
   </div>
+
+  <div id="toast" class="toast"></div>
 
 </body>
 </html>
