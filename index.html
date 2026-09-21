@@ -214,6 +214,13 @@
     background:var(--bg-card); color:var(--text); font-size:15px; font-family:inherit;
   }
   form textarea { resize:vertical; }
+  form input.campo-fijo {
+    background:#171717;
+    color: var(--gold-light);
+    border-color:#2a2a2a;
+    pointer-events:none;
+  }
+  form input.campo-fijo::placeholder { color:#666; }
   fieldset { border:1px solid #333; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
   fieldset legend { padding:0 6px; font-size:13px; color:var(--text-dim); }
   label.radio { display:inline-flex; align-items:center; gap:6px; margin-right:14px; margin-bottom:6px; font-size:14px; color:var(--text); }
@@ -464,11 +471,11 @@
           <div id="dictadoEstado" class="msg"></div>
 
           <label>EESS / Destino
-            <select id="f_eess" required></select>
+            <select id="f_eess" required onchange="actualizarEncargado('f')"></select>
           </label>
 
           <label>Encargado
-            <select id="f_encargado" required></select>
+            <input type="text" id="f_encargado" class="campo-fijo" readonly tabindex="-1" placeholder="Se completa al elegir la estación">
           </label>
 
           <label>Fecha
@@ -510,11 +517,11 @@
         <!-- Formulario: compra de urgencia -->
         <form id="formUrgencia" onsubmit="return informarUrgencia(event)" style="display:none">
           <label>EESS / Destino
-            <select id="u_eess" required></select>
+            <select id="u_eess" required onchange="actualizarEncargado('u')"></select>
           </label>
 
           <label>Encargado
-            <select id="u_encargado" required></select>
+            <input type="text" id="u_encargado" class="campo-fijo" readonly tabindex="-1" placeholder="Se completa al elegir la estación">
           </label>
 
           <label>Fecha de la compra
@@ -689,9 +696,15 @@
         e.code = 'sin-listas';
         throw e;
       }
+      if (d.estaciones.length !== d.encargados.length) {
+        const e2 = new Error('sin-listas');
+        e2.code = 'sin-listas';
+        throw e2;
+      }
       listas = { estaciones: d.estaciones, encargados: d.encargados };
       ['f_eess', 'u_eess'].forEach(function(id) { llenarSelect(id, listas.estaciones, 'Elegí la estación'); });
-      ['f_encargado', 'u_encargado'].forEach(function(id) { llenarSelect(id, listas.encargados, 'Elegí el encargado'); });
+      actualizarEncargado('f');
+      actualizarEncargado('u');
     });
   }
 
@@ -708,6 +721,17 @@
       op.textContent = item;
       sel.appendChild(op);
     });
+  }
+
+  // Cada estación tiene un único encargado: van emparejados por posición en config/listas.
+  function encargadoDeEstacion(estacion) {
+    const i = listas.estaciones.indexOf(estacion);
+    return i >= 0 ? listas.encargados[i] : '';
+  }
+
+  function actualizarEncargado(prefijo) {
+    const estacion = document.getElementById(prefijo + '_eess').value;
+    document.getElementById(prefijo + '_encargado').value = encargadoDeEstacion(estacion);
   }
 
   function entrarComoEncargado() {
@@ -950,8 +974,10 @@
       }
     });
 
-    if (resultados.eess) seleccionarPorTexto('f_eess', resultados.eess);
-    if (resultados.encargado) seleccionarPorTexto('f_encargado', resultados.encargado);
+    if (resultados.eess) {
+      seleccionarPorTexto('f_eess', resultados.eess);
+      actualizarEncargado('f');
+    }
 
     if (resultados.cantidad) {
       const numero = resultados.cantidad.match(/\d+/);
@@ -1110,7 +1136,7 @@
       id: generarId('oc'),
       tipo: 'normal',
       eess: document.getElementById('f_eess').value,
-      encargado: document.getElementById('f_encargado').value,
+      encargado: encargadoDeEstacion(document.getElementById('f_eess').value),
       fecha: document.getElementById('f_fecha').value,
       categoria: categoriaEl.value,
       producto: document.getElementById('f_producto').value.trim(),
@@ -1128,6 +1154,7 @@
       await guardarLocal(solicitud);
       document.getElementById('formSolicitud').reset();
       document.getElementById('dictadoEstado').textContent = '';
+      actualizarEncargado('f');
       ponerFechasDeHoy();
       msg.textContent = 'Solicitud generada. Firmala desde "Generadas" para enviarla a Compras.';
       msg.className = 'msg ok';
@@ -1171,7 +1198,7 @@
       id: generarId('ur'),
       tipo: 'urgencia',
       eess: document.getElementById('u_eess').value,
-      encargado: document.getElementById('u_encargado').value,
+      encargado: encargadoDeEstacion(document.getElementById('u_eess').value),
       fechaCompra: document.getElementById('u_fecha').value,
       detalle: document.getElementById('u_detalle').value.trim(),
       motivo: document.getElementById('u_motivo').value.trim(),
@@ -1222,6 +1249,7 @@
     try { await guardarLocal(urgencia); } catch (e) { /* el envío ya se hizo; el historial local es secundario */ }
 
     document.getElementById('formUrgencia').reset();
+    actualizarEncargado('u');
     ponerFechasDeHoy();
     validarImporte();
     msg.textContent = '';
