@@ -376,6 +376,44 @@
     text-transform:uppercase;
     letter-spacing:0.5px;
   }
+  .card .card-aviso {
+    font-size:11px;
+    color:#d9a45b;
+    margin-top:6px;
+  }
+  .modal-aviso {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.8);
+    z-index:1100;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .aviso-caja {
+    background: var(--bg-card);
+    border:1px solid var(--gold);
+    border-radius:12px;
+    padding:22px;
+    width:100%;
+    max-width:360px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    box-shadow: 0 0 14px rgba(201,168,106,0.25);
+  }
+  .aviso-caja h2 {
+    font-size:15px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .aviso-caja p {
+    font-size:14px;
+    line-height:1.45;
+    color: var(--text);
+  }
 </style>
 </head>
 <body>
@@ -580,6 +618,8 @@
         aplicarDatosUsuarioAlFormulario();
         renderGeneradas();
         renderHistorial();
+        pedirAlmacenamientoPersistente();
+        revisarEspacio();
       })
       .catch(function(err) {
         errorBox.textContent = mensajeErrorLogin(err.code);
@@ -618,6 +658,7 @@
     document.getElementById('dictadoEstado').textContent = '';
     document.getElementById('listaGeneradas').innerHTML = '';
     document.getElementById('listaHistorial').innerHTML = '';
+    cacheSolicitudes.clear();
     mostrarTab('inicio');
 
     const pass = document.getElementById('loginPass');
@@ -947,48 +988,246 @@
     return 'oc' + Date.now();
   }
 
+  // ---------- Almacenamiento en el celular (IndexedDB) ----------
+  const DB_NOMBRE = 'oc_solicitudes_db';
+  const DB_STORE = 'solicitudes';
+  const MARGEN_AVISO_BYTES = 30 * 1024 * 1024;
+  const MSG_SIN_ESPACIO = 'Tu celular no tiene más espacio libre. Borrá fotos, videos o apps que no uses y volvé a intentar.';
+  const cacheSolicitudes = new Map();
+  let dbPromesa = null;
+
+  function abrirDB() {
+    if (dbPromesa) return dbPromesa;
+    dbPromesa = new Promise(function(resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('Este navegador no permite guardar órdenes. Usá Chrome.'));
+        return;
+      }
+      const req = indexedDB.open(DB_NOMBRE, 1);
+      req.onupgradeneeded = function() {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) {
+          db.createObjectStore(DB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    }).then(migrarDesdeLocalStorage).catch(function(err) {
+      dbPromesa = null;
+      throw err;
+    });
+    return dbPromesa;
+  }
+
+  // Pasa las órdenes guardadas con la versión anterior (localStorage) a IndexedDB, una sola vez.
+  function migrarDesdeLocalStorage(db) {
+    let viejas = [];
+    try { viejas = JSON.parse(localStorage.getItem('oc_solicitudes') || '[]'); } catch (e) { viejas = []; }
+    if (!Array.isArray(viejas) || viejas.length === 0) return db;
+    return new Promise(function(resolve) {
+      let tx;
+      try {
+        tx = db.transaction(DB_STORE, 'readwrite');
+        const store = tx.objectStore(DB_STORE);
+        viejas.forEach(function(s) { if (s && s.id) store.put(s); });
+      } catch (e) {
+        resolve(db);
+        return;
+      }
+      tx.oncomplete = function() {
+        try { localStorage.removeItem('oc_solicitudes'); } catch (e) {}
+        resolve(db);
+      };
+      // si falla, dejamos localStorage intacto y se reintenta la próxima vez
+      tx.onabort = function() { resolve(db); };
+    });
+  }
+
+  function obtenerSolicitudes() {
+    return abrirDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { reject(req.error); };
+      });
+    });
+  }
+
+  function escribirSolicitud(s) {
+    return abrirDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        let tx;
+        try {
+          tx = db.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put(s);
+        } catch (e) {
+          reject(e);
+          return;
+        }
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(tx.error); };
+        tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
+      });
+    });
+  }
+
+  function esErrorDeEspacio(err) {
+    if (!err) return false;
+    return err.name === 'QuotaExceededError' || /quota/i.test(err.message || '');
+  }
+
+  function porFechaCreacion(a, b) {
+    return String(a.creada || '').localeCompare(String(b.creada || ''));
+  }
+
+  function fechaCorta(iso) {
+    if (!iso) return '';
+    const p = String(iso).slice(0, 10).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+
+  // Quita las fotos de la orden ENVIADA más vieja que todavía las tenga. Nunca toca órdenes pendientes.
+  function liberarEspacioUnaOrden(idExcluido) {
+    return obtenerSolicitudes().then(function(lista) {
+      const candidatas = lista.filter(function(x) {
+        return x.id !== idExcluido && x.estado === 'enviada' && x.adjuntos && x.adjuntos.length;
+      }).sort(porFechaCreacion);
+      if (!candidatas.length) return false;
+      const vieja = candidatas[0];
+      vieja.adjuntos = [];
+      vieja.sinFotos = true;
+      return escribirSolicitud(vieja).then(function() {
+        if (cacheSolicitudes.has(vieja.id)) cacheSolicitudes.set(vieja.id, vieja);
+        return true;
+      });
+    });
+  }
+
+  // Guarda la orden; si el celular no tiene espacio, libera de a una orden vieja y reintenta.
+  // Devuelve cuántas órdenes perdieron sus fotos para poder guardar.
+  function guardarSolicitudConEspacio(s) {
+    let fotosQuitadas = 0;
+    function intentar() {
+      return escribirSolicitud(s).then(function() {
+        return fotosQuitadas;
+      }, function(err) {
+        if (!esErrorDeEspacio(err)) throw err;
+        return liberarEspacioUnaOrden(s.id).then(function(liberada) {
+          if (!liberada) throw new Error('SIN_ESPACIO');
+          fotosQuitadas++;
+          return intentar();
+        });
+      });
+    }
+    return intentar();
+  }
+
+  function avisarFotosQuitadas(cantidad) {
+    if (!cantidad) return;
+    mostrarAviso('Se liberó espacio',
+      'Para guardar esta orden se quitaron las fotos de ' +
+      (cantidad === 1 ? 'la orden enviada más antigua' : 'las ' + cantidad + ' órdenes enviadas más antiguas') +
+      '. Siguen en el Historial, pero su PDF ahora sale sin fotos.');
+  }
+
+  function pedirAlmacenamientoPersistente() {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    navigator.storage.persisted().then(function(yaEsta) {
+      if (!yaEsta) return navigator.storage.persist();
+    }).catch(function() {});
+  }
+
+  // Si queda poco espacio, avisa (como máximo una vez por día) antes de que haga falta borrar fotos.
+  function revisarEspacio() {
+    if (!navigator.storage || !navigator.storage.estimate) return Promise.resolve();
+    return navigator.storage.estimate().then(function(est) {
+      if (!est || !est.quota) return;
+      const libre = est.quota - (est.usage || 0);
+      if (libre >= MARGEN_AVISO_BYTES) return;
+
+      const hoy = hoyISO();
+      let ultimo = null;
+      try { ultimo = localStorage.getItem('oc_ultimo_aviso_espacio'); } catch (e) {}
+      if (ultimo === hoy) return;
+      try { localStorage.setItem('oc_ultimo_aviso_espacio', hoy); } catch (e) {}
+
+      return obtenerSolicitudes().then(function(lista) {
+        const conFotos = lista.filter(function(x) {
+          return x.estado === 'enviada' && x.adjuntos && x.adjuntos.length;
+        }).sort(porFechaCreacion);
+        if (conFotos.length) {
+          mostrarAviso('Poco espacio en el celular',
+            'Tu celular se está quedando sin espacio para la app. Si necesitás los PDF de tus órdenes enviadas más antiguas (desde el ' +
+            fechaCorta(conFotos[0].fecha) + '), descargalos desde el Historial. Si ya los tenés en WhatsApp, no tenés que hacer nada. ' +
+            'Cuando el espacio se termine, se van a quitar las fotos de esas órdenes, empezando por la más vieja.');
+        } else {
+          mostrarAviso('Poco espacio en el celular',
+            'Tu celular se está quedando sin espacio. Borrá fotos, videos o apps que no uses para que la app siga funcionando bien.');
+        }
+      });
+    }).catch(function() {});
+  }
+
+  function mostrarAviso(titulo, texto) {
+    document.getElementById('avisoTitulo').textContent = titulo;
+    document.getElementById('avisoTexto').textContent = texto;
+    document.getElementById('modalAviso').style.display = 'flex';
+  }
+
+  function cerrarAviso() {
+    document.getElementById('modalAviso').style.display = 'none';
+  }
+
+  function mostrarErrorLectura(err) {
+    const msg = document.getElementById('f_msg');
+    msg.textContent = 'No se pudieron leer las órdenes guardadas: ' + (err && err.message ? err.message : err);
+    msg.className = 'msg error';
+  }
+  // ---------- fin almacenamiento ----------
+
   function guardarSolicitud(event) {
     event.preventDefault();
+    guardarSolicitudAsync();
+    return false;
+  }
+
+  async function guardarSolicitudAsync() {
     const msg = document.getElementById('f_msg');
+    const btn = document.querySelector('#formSolicitud button[type="submit"]');
+    const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
+    const urgenteEl = document.querySelector('input[name="f_urgente"]:checked');
+
+    if (!categoriaEl) {
+      msg.textContent = 'Elegí una categoría';
+      msg.className = 'msg error';
+      return;
+    }
+
+    const solicitud = {
+      id: generarId(),
+      eess: document.getElementById('f_eess').value.trim(),
+      encargado: document.getElementById('f_encargado').value.trim(),
+      fecha: document.getElementById('f_fecha').value,
+      categoria: categoriaEl.value,
+      producto: document.getElementById('f_producto').value.trim(),
+      cantidad: document.getElementById('f_cantidad').value,
+      fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
+      motivo: document.getElementById('f_motivo').value.trim(),
+      caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
+      adjuntos: adjuntosTemp,
+      urgente: urgenteEl ? urgenteEl.value : 'no',
+      motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
+      estado: 'generada',
+      creada: new Date().toISOString(),
+      creadoPor: usuarioActual ? usuarioActual.email : ''
+    };
+
+    btn.disabled = true;
+    msg.textContent = 'Guardando...';
+    msg.className = 'msg';
+
     try {
-      const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
-      const urgenteEl = document.querySelector('input[name="f_urgente"]:checked');
-
-      if (!categoriaEl) {
-        msg.textContent = 'Elegí una categoría';
-        msg.className = 'msg error';
-        return false;
-      }
-
-      const solicitud = {
-        id: generarId(),
-        eess: document.getElementById('f_eess').value.trim(),
-        encargado: document.getElementById('f_encargado').value.trim(),
-        fecha: document.getElementById('f_fecha').value,
-        categoria: categoriaEl.value,
-        producto: document.getElementById('f_producto').value.trim(),
-        cantidad: document.getElementById('f_cantidad').value,
-        fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
-        motivo: document.getElementById('f_motivo').value.trim(),
-        caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
-        adjuntos: adjuntosTemp,
-        urgente: urgenteEl ? urgenteEl.value : 'no',
-        motivoUrgencia: document.getElementById('f_motivoUrgencia').value.trim(),
-        estado: 'generada',
-        creada: new Date().toISOString(),
-        creadoPor: usuarioActual ? usuarioActual.email : ''
-      };
-
-      const lista = obtenerSolicitudes();
-      lista.push(solicitud);
-
-      try {
-        guardarSolicitudes(lista);
-      } catch (err) {
-        msg.textContent = 'No se pudo guardar: las fotos ocupan demasiado espacio. Sacá menos fotos o de menor calidad e intentá de nuevo.';
-        msg.className = 'msg error';
-        return false;
-      }
+      const fotosQuitadas = await guardarSolicitudConEspacio(solicitud);
 
       document.getElementById('formSolicitud').reset();
       adjuntosTemp = [];
@@ -999,25 +1238,18 @@
       msg.textContent = 'Solicitud generada correctamente';
       msg.className = 'msg ok';
 
-      renderGeneradas();
-      return false;
+      await renderGeneradas();
+      await renderHistorial();
+      avisarFotosQuitadas(fotosQuitadas);
+      revisarEspacio();
     } catch (err) {
-      msg.textContent = 'Error inesperado al guardar: ' + err.message;
+      msg.textContent = (err && err.message === 'SIN_ESPACIO')
+        ? MSG_SIN_ESPACIO
+        : 'No se pudo guardar la solicitud: ' + (err && err.message ? err.message : err);
       msg.className = 'msg error';
-      return false;
+    } finally {
+      btn.disabled = false;
     }
-  }
-
-  function obtenerSolicitudes() {
-    try {
-      return JSON.parse(localStorage.getItem('oc_solicitudes') || '[]');
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function guardarSolicitudes(lista) {
-    localStorage.setItem('oc_solicitudes', JSON.stringify(lista));
   }
 
   function esDelUsuarioActual(s) {
@@ -1025,8 +1257,15 @@
     return s.creadoPor === usuarioActual.email;
   }
 
-  function renderGeneradas() {
-    const lista = obtenerSolicitudes().filter(s => s.estado === 'generada' && esDelUsuarioActual(s));
+  async function renderGeneradas() {
+    let lista;
+    try {
+      lista = await obtenerSolicitudes();
+    } catch (err) {
+      mostrarErrorLectura(err);
+      return;
+    }
+    lista = lista.filter(s => s.estado === 'generada' && esDelUsuarioActual(s)).sort(porFechaCreacion).reverse();
     const cont = document.getElementById('listaGeneradas');
     const vacio = document.getElementById('generadasVacio');
     cont.innerHTML = '';
@@ -1037,7 +1276,8 @@
     }
     vacio.style.display = 'none';
 
-    lista.slice().reverse().forEach(s => {
+    lista.forEach(s => {
+      cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML =
@@ -1053,8 +1293,15 @@
     });
   }
 
-  function renderHistorial() {
-    const lista = obtenerSolicitudes().filter(s => s.estado === 'enviada' && esDelUsuarioActual(s));
+  async function renderHistorial() {
+    let lista;
+    try {
+      lista = await obtenerSolicitudes();
+    } catch (err) {
+      mostrarErrorLectura(err);
+      return;
+    }
+    lista = lista.filter(s => s.estado === 'enviada' && esDelUsuarioActual(s)).sort(porFechaCreacion).reverse();
     const cont = document.getElementById('listaHistorial');
     const vacio = document.getElementById('historialVacio');
     cont.innerHTML = '';
@@ -1065,7 +1312,8 @@
     }
     vacio.style.display = 'none';
 
-    lista.slice().reverse().forEach(s => {
+    lista.forEach(s => {
+      cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML =
@@ -1077,6 +1325,7 @@
         '<div class="card-row">Cantidad: ' + s.cantidad + '</div>' +
         '<div class="card-row">Encargado: ' + s.encargado + '</div>' +
         '<div class="card-estado">Orden enviada</div>' +
+        (s.sinFotos ? '<div class="card-aviso">PDF sin fotos (se quitaron para liberar espacio)</div>' : '') +
         '<button class="btn-generar-pdf" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
       cont.appendChild(card);
     });
@@ -1268,31 +1517,44 @@
     procesarEnvioConFirma(id, firmaDataUrl);
   }
 
-  function procesarEnvioConFirma(id, firmaDataUrl) {
-    const lista = obtenerSolicitudes();
-    const idx = lista.findIndex(s => s.id === id);
-    if (idx === -1) return;
+  async function procesarEnvioConFirma(id, firmaDataUrl) {
+    const solicitud = cacheSolicitudes.get(id);
+    if (!solicitud) {
+      alert('No se encontró la orden. Cerrá y volvé a abrir la app.');
+      return;
+    }
 
-    lista[idx].firma = firmaDataUrl;
+    solicitud.firma = firmaDataUrl;
 
+    // El PDF se genera primero, en el mismo toque del usuario, para que la descarga no se bloquee.
     try {
-      generarPDFOrden(lista[idx]);
+      generarPDFOrden(solicitud);
     } catch (err) {
+      solicitud.firma = null;
       alert('No se pudo generar el PDF: ' + err.message);
       return;
     }
 
-    lista[idx].estado = 'enviada';
-    lista[idx].fechaEnvio = new Date().toISOString();
-    guardarSolicitudes(lista);
+    solicitud.estado = 'enviada';
+    solicitud.fechaEnvio = new Date().toISOString();
 
-    renderGeneradas();
-    renderHistorial();
+    try {
+      const fotosQuitadas = await guardarSolicitudConEspacio(solicitud);
+      avisarFotosQuitadas(fotosQuitadas);
+    } catch (err) {
+      solicitud.estado = 'generada';
+      alert(err && err.message === 'SIN_ESPACIO'
+        ? 'El PDF se descargó bien, pero ' + MSG_SIN_ESPACIO.charAt(0).toLowerCase() + MSG_SIN_ESPACIO.slice(1)
+        : 'El PDF se descargó bien, pero no se pudo actualizar el historial: ' + (err && err.message ? err.message : err));
+    }
+
+    await renderGeneradas();
+    await renderHistorial();
+    revisarEspacio();
   }
 
   function descargarPDFDeNuevo(id) {
-    const lista = obtenerSolicitudes();
-    const solicitud = lista.find(s => s.id === id);
+    const solicitud = cacheSolicitudes.get(id);
     if (!solicitud) return;
     try {
       generarPDFOrden(solicitud);
@@ -1330,6 +1592,14 @@
       <button type="button" class="btn-camara-secundario" onclick="cerrarFirma()">Cancelar</button>
       <button type="button" class="btn-camara-secundario" onclick="limpiarFirma()">Limpiar</button>
       <button type="button" class="btn-firma-confirmar" onclick="confirmarFirma()">Confirmar y enviar</button>
+    </div>
+  </div>
+
+  <div id="modalAviso" class="modal-aviso">
+    <div class="aviso-caja">
+      <h2 id="avisoTitulo" class="texto-metal"></h2>
+      <p id="avisoTexto"></p>
+      <button type="button" class="btn-firma-confirmar" onclick="cerrarAviso()">Entendido</button>
     </div>
   </div>
 
