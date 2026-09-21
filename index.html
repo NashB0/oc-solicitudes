@@ -528,6 +528,7 @@
   }
   .btn-rechazo:disabled { opacity:0.45; }
   .botones-fila { display:flex; gap:10px; }
+  .btn-rechazo-compras { margin-top:18px; }
   .detalle-resolucion {
     display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.4;
     border-radius:10px; padding:12px; margin:14px 0; border:1px solid #444;
@@ -1611,7 +1612,8 @@
     }
     if (solicitud.estado === 'rechazada') {
       y += 2;
-      linea('Resolución de Gerencia', 'Rechazada — ' + (solicitud.motivoRechazo || ''));
+      linea(solicitud.rechazadaPor === 'compras' ? 'Rechazada por Compras' : 'Resolución de Gerencia',
+        (solicitud.rechazadaPor === 'compras' ? '' : 'Rechazada — ') + (solicitud.motivoRechazo || ''));
     }
     if (solicitud.estado === 'finalizada') {
       linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''));
@@ -1898,7 +1900,7 @@
         if (usuarioActual.rol === 'compras') {
           if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + s.producto + ' (' + s.eess + ')');
           if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + s.producto + ' (' + s.eess + ')');
-          if (s.estado === 'rechazada') mostrarToast('Gerencia rechazó: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'rechazada' && s.rechazadaPor !== 'compras') mostrarToast('Gerencia rechazó: ' + s.producto + ' (' + s.eess + ')');
         }
         if (usuarioActual.rol === 'gerencia' && s.estado === 'en_gerencia') {
           mostrarToast('Nueva orden para aprobar: ' + s.producto + ' (' + s.eess + ')');
@@ -1935,7 +1937,9 @@
       '</div>' +
       '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
       '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + (n ? ' · Presupuestos: ' + n : '') + '</div>' +
-      '<div class="card-pie">' + chipEstado(s.estado) + '<span class="card-ver">Ver detalle ›</span></div>' +
+      '<div class="card-pie">' + (s.estado === 'rechazada' && s.rechazadaPor === 'compras'
+        ? '<span class="chip chip-rechazo">Rechazada por Compras</span>'
+        : chipEstado(s.estado)) + '<span class="card-ver">Ver detalle ›</span></div>' +
     '</div>';
   }
 
@@ -1987,7 +1991,7 @@
       const porAprobar = todas.filter(s => s.estado === 'en_gerencia');
       const resueltas = todas.filter(s => ['aprobada', 'rechazada', 'finalizada'].indexOf(s.estado) !== -1);
       llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
-      llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no resolviste ninguna orden.');
+      llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no hay órdenes resueltas.');
       ponerBadge('badgeGPorAprobar', porAprobar.length);
     }
 
@@ -2076,6 +2080,8 @@
       '</div>';
       html += '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>';
       if (!presupuestos.length) html += '<p class="detalle-nota">Cargá al menos un presupuesto para poder enviarla.</p>';
+      html += '<button type="button" class="btn-rechazo btn-rechazo-compras" onclick="rechazarOrden(this)">Rechazar solicitud</button>' +
+        '<p class="detalle-nota">Usalo si la solicitud está duplicada, mal cargada o no corresponde.</p>';
     }
 
     // Estado / resolución
@@ -2090,7 +2096,8 @@
         '</div>';
     }
     if (s.estado === 'rechazada') {
-      html += '<div class="detalle-resolucion rechazo"><b>Rechazada por Gerencia</b>' +
+      html += '<div class="detalle-resolucion rechazo"><b>Rechazada por ' + (s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia') +
+        (s.resueltaEn ? ' el ' + fechaDeTimestamp(s.resueltaEn) : '') + '</b>' +
         '<span>Motivo: ' + escaparHTML(s.motivoRechazo) + '</span>' +
         '<span>La orden quedó cerrada. Si hace falta, el encargado tiene que generar una nueva.</span></div>';
     }
@@ -2212,16 +2219,21 @@
   async function rechazarOrden(boton) {
     const s = solicitudAbierta();
     if (!s) return;
-    const motivo = await pedirTexto('Rechazar orden',
-      s.producto + ' (' + s.eess + ')\nContale a Compras por qué se rechaza:', 'Motivo del rechazo', 'Rechazar');
+    const esCompras = usuarioActual.rol === 'compras';
+    const motivo = await pedirTexto(esCompras ? 'Rechazar solicitud' : 'Rechazar orden',
+      s.producto + ' (' + s.eess + ')\n' + (esCompras
+        ? 'La solicitud se va a cerrar sin pasar por Gerencia. Escribí el motivo:'
+        : 'Contale a Compras por qué se rechaza:'),
+      'Motivo del rechazo', 'Rechazar');
     if (motivo === null) return;
     if (await actualizarSolicitud(s.id, {
       estado: 'rechazada',
       motivoRechazo: motivo,
+      rechazadaPor: esCompras ? 'compras' : 'gerencia',
       resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
       resueltaPor: usuarioActual.email
     }, boton)) {
-      mostrarToast('Orden rechazada.');
+      mostrarToast(esCompras ? 'Solicitud rechazada. Quedó en el historial.' : 'Orden rechazada.');
     }
   }
 
