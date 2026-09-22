@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.nashb0.ocsolicitudes.twa",
+      "sha256_cert_fingerprints": [
+        "E7:C8:14:4E:92:79:94:2E:AD:0F:52:E9:88:A5:CD:A3:13:A4:C0:34:98:1D:43:02:D0:EF:C9:8B:F7:84:D2:C9"
+      ]
+    }
+  }
+]
