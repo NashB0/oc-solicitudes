@@ -713,6 +713,7 @@
       <button id="nav-historial" onclick="mostrarTab('historial')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
         Historial
+        <span class="badge-nav" id="badgeHistorial"></span>
       </button>
     </nav>
 
@@ -910,6 +911,7 @@
     mostrarTab('inicio');
     renderGeneradas();
     renderHistorial();
+    iniciarSeguimientoHistorial();
   }
 
   const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
@@ -940,10 +942,11 @@
     document.getElementById('listaHistorial').innerHTML = '';
     cacheSolicitudes.clear();
     detenerEscuchas();
+    detenerSeguimientoHistorial();
     cerrarDetalle();
     datosSolicitudes = [];
     datosUrgencias = [];
-    ['badgeCSolicitudes', 'badgeCUrgencias', 'badgeGPorAprobar'].forEach(function(id) { ponerBadge(id, 0); });
+    ['badgeCSolicitudes', 'badgeCUrgencias', 'badgeGPorAprobar', 'badgeHistorial'].forEach(function(id) { ponerBadge(id, 0); });
 
     const pass = document.getElementById('loginPass');
     pass.value = '';
@@ -975,6 +978,8 @@
     });
   }
 
+  let tabActual = 'inicio';
+
   function mostrarTab(id) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.bottom-nav button').forEach(el => el.classList.remove('active'));
@@ -983,6 +988,10 @@
     document.getElementById('nav-' + id).classList.add('active');
     document.getElementById('tabTitle').textContent = TITULOS[id];
     window.scrollTo(0, 0);
+    tabActual = id;
+    if (id === 'historial') {
+      marcarHistorialVisto().then(function() { renderHistorial(); });
+    }
   }
 
   function seleccionarModo(modo) {
@@ -1463,6 +1472,7 @@
     msg.textContent = '';
     btn.disabled = false;
     await renderHistorial();
+    iniciarSeguimientoHistorial();
     await mostrarAviso('Compra informada', 'Compras ya recibió la compra de urgencia. Queda registrada en tu Historial.');
   }
 
@@ -1517,6 +1527,12 @@
       cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
       card.className = 'card';
+      const estado = estadoActualLocal(s);
+      let filaRechazo = '';
+      if (estado === 'rechazada' && s.motivoRechazo) {
+        const quien = s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia';
+        filaRechazo = '<div class="card-row">Rechazada por ' + quien + ': ' + escaparHTML(s.motivoRechazo) + '</div>';
+      }
       if (s.tipo === 'urgencia') {
         card.innerHTML =
           '<div class="card-top">' +
@@ -1526,7 +1542,7 @@
           '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.encargado) + '</div>' +
           '<div class="card-row">Importe: ' + formatoPesos(s.importe) + '</div>' +
           '<div class="card-row">Proveedor: ' + escaparHTML(s.proveedor) + ' · Comp. ' + escaparHTML(s.comprobante) + '</div>' +
-          '<div class="card-estado">Informada a Compras</div>';
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>';
       } else {
         card.innerHTML =
           '<div class="card-top">' +
@@ -1536,11 +1552,159 @@
           '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
           '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + '</div>' +
           '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
-          '<div class="card-estado">Enviada a Compras</div>' +
+          filaRechazo +
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
           '<button class="btn-generar-pdf" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
       }
       cont.appendChild(card);
     });
+  }
+
+  // ---------- Seguimiento del estado de lo enviado (Historial del encargado) ----------
+  // Escucha en Firebase las solicitudes enviadas desde ESTE celular y avisa cuando
+  // Compras o Gerencia toman una decisión. La visibilidad no cambia: solo se siguen
+  // los documentos cuyo id ya está guardado localmente.
+  const ESTADOS_CERRADOS = ['finalizada', 'rechazada', 'registrada'];
+  const MAX_SEGUIMIENTO = 25;
+
+  const ESTADOS_ENCARGADO = {
+    pendiente_compras: { texto: 'En Compras', clase: 'chip-accion' },
+    en_gerencia: { texto: 'En Gerencia', clase: 'chip-espera' },
+    aprobada: { texto: 'Aprobada por Gerencia', clase: 'chip-ok' },
+    rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
+    finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    informada: { texto: 'Informada a Compras', clase: 'chip-accion' },
+    registrada: { texto: 'Registrada por Compras', clase: 'chip-fin' }
+  };
+
+  let seguimientoLocal = new Map();
+  let seguimientoUnsubs = [];
+  let snapshotsRecibidos = new Set();
+  let faseInicialHistorial = false;
+
+  function chipEstadoEncargado(estado) {
+    const e = ESTADOS_ENCARGADO[estado] || { texto: estado, clase: '' };
+    return '<span class="chip ' + e.clase + '">' + escaparHTML(e.texto) + '</span>';
+  }
+
+  function estadoBase(s) {
+    return s.tipo === 'urgencia' ? 'informada' : 'pendiente_compras';
+  }
+
+  function estadoActualLocal(s) {
+    return s.estadoRemoto || estadoBase(s);
+  }
+
+  function textoNovedad(s, estado) {
+    const nombre = s.tipo === 'urgencia' ? s.detalle : s.producto;
+    if (estado === 'en_gerencia') return 'Compras presupuestó "' + nombre + '" y pasó a Gerencia';
+    if (estado === 'aprobada') return 'Gerencia aprobó "' + nombre + '"';
+    if (estado === 'finalizada') return 'Ya se realizó la compra de "' + nombre + '"';
+    if (estado === 'registrada') return 'Compras registró tu compra de urgencia "' + nombre + '"';
+    if (estado === 'rechazada') {
+      return (s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia') + ' rechazó "' + nombre + '"';
+    }
+    return 'Cambió el estado de "' + nombre + '"';
+  }
+
+  function contarNovedades() {
+    let n = 0;
+    seguimientoLocal.forEach(function(s) {
+      if (s.estadoRemoto && s.vistoEstado && s.estadoRemoto !== s.vistoEstado) n++;
+    });
+    return n;
+  }
+
+  function actualizarBadgeHistorial() {
+    ponerBadge('badgeHistorial', contarNovedades());
+  }
+
+  function marcarHistorialVisto() {
+    const guardados = [];
+    seguimientoLocal.forEach(function(s) {
+      if (s.estadoRemoto && s.vistoEstado !== s.estadoRemoto) {
+        s.vistoEstado = s.estadoRemoto;
+        guardados.push(guardarLocal(s).catch(function() {}));
+      }
+    });
+    actualizarBadgeHistorial();
+    return Promise.all(guardados);
+  }
+
+  function detenerSeguimientoHistorial() {
+    seguimientoUnsubs.forEach(function(f) { try { f(); } catch (e) {} });
+    seguimientoUnsubs = [];
+    seguimientoLocal = new Map();
+    snapshotsRecibidos = new Set();
+    faseInicialHistorial = false;
+    ponerBadge('badgeHistorial', 0);
+  }
+
+  async function iniciarSeguimientoHistorial() {
+    detenerSeguimientoHistorial();
+    if (!usuarioActual || usuarioActual.rol !== 'encargado') return;
+
+    let locales;
+    try {
+      locales = await obtenerLocales();
+    } catch (e) {
+      return;
+    }
+
+    const enviadas = locales
+      .filter(function(s) { return s.estadoLocal === 'enviada' && esDelUsuarioActual(s); })
+      .sort(porFechaCreacion).reverse();
+    enviadas.forEach(function(s) { seguimientoLocal.set(s.id, s); });
+    actualizarBadgeHistorial();
+
+    const abiertas = enviadas.filter(function(s) {
+      return ESTADOS_CERRADOS.indexOf(estadoActualLocal(s)) === -1;
+    }).slice(0, MAX_SEGUIMIENTO);
+    if (!abiertas.length) return;
+
+    faseInicialHistorial = true;
+    setTimeout(function() {
+      if (!faseInicialHistorial) return;
+      faseInicialHistorial = false;
+      const n = contarNovedades();
+      if (n > 0 && tabActual !== 'historial') {
+        mostrarToast(n === 1 ? 'Tenés una novedad en el Historial' : 'Tenés ' + n + ' novedades en el Historial');
+      }
+    }, 2500);
+
+    abiertas.forEach(function(s) {
+      const coleccion = s.tipo === 'urgencia' ? 'urgencias' : 'solicitudes';
+      const unsub = db.collection(coleccion).doc(s.id).onSnapshot(function(snap) {
+        aplicarCambioRemoto(s.id, snap);
+      }, function() { /* si no se puede leer, el historial sigue mostrando lo local */ });
+      seguimientoUnsubs.push(unsub);
+    });
+  }
+
+  async function aplicarCambioRemoto(id, snap) {
+    const s = seguimientoLocal.get(id);
+    const primera = !snapshotsRecibidos.has(id);
+    snapshotsRecibidos.add(id);
+    if (!s || !snap.exists) return;
+
+    const datos = snap.data() || {};
+    const anterior = estadoActualLocal(s);
+    const nuevo = datos.estado || anterior;
+
+    if (!s.vistoEstado) s.vistoEstado = estadoBase(s);
+    s.estadoRemoto = nuevo;
+    s.motivoRechazo = datos.motivoRechazo || '';
+    s.rechazadaPor = datos.rechazadaPor || '';
+
+    const cambio = nuevo !== anterior;
+    if (cambio && !(primera && faseInicialHistorial)) {
+      mostrarToast(textoNovedad(s, nuevo));
+    }
+    if (tabActual === 'historial') s.vistoEstado = nuevo;
+
+    try { await guardarLocal(s); } catch (e) { /* el estado se vuelve a leer al reabrir */ }
+    actualizarBadgeHistorial();
+    if (cambio && tabActual === 'historial') await renderHistorial();
   }
 
   // ---------- PDF ----------
@@ -1779,6 +1943,7 @@
 
     await renderGeneradas();
     await renderHistorial();
+    iniciarSeguimientoHistorial();
     await mostrarAviso('Enviada a Compras', 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
   }
 
