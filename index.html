@@ -610,10 +610,14 @@
 
           <fieldset>
             <legend>Categoría</legend>
-            <label class="radio"><input type="radio" name="f_categoria" value="Insumos" required> Insumos</label>
-            <label class="radio"><input type="radio" name="f_categoria" value="Compras para infraestructura"> Compras para infraestructura</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Computación" required> Computación</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Imagen"> Imagen</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Librería"> Librería</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Limpieza"> Limpieza</label>
             <label class="radio"><input type="radio" name="f_categoria" value="Obras"> Obras</label>
-            <label class="radio"><input type="radio" name="f_categoria" value="Mercaderías"> Mercaderías</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Papelería"> Papelería</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Ropa"> Ropa</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Varios"> Varios</label>
           </fieldset>
 
           <label>Producto / Servicio solicitado
@@ -764,7 +768,7 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
 
-  const LIMITE_URGENCIA = 200001;
+  const LIMITE_URGENCIA = 200000;
 
   let usuarioActual = null;
   let listas = { estaciones: [], encargados: [] };
@@ -1204,10 +1208,14 @@
     if (resultados.categoria) {
       const catTexto = quitarAcentos(resultados.categoria.toLowerCase());
       const opciones = [
-        { valor: 'Insumos', match: 'insumos' },
-        { valor: 'Compras para infraestructura', match: 'infraestructura' },
+        { valor: 'Computación', match: 'computac' },
+        { valor: 'Imagen', match: 'imagen' },
+        { valor: 'Librería', match: 'libreri' },
+        { valor: 'Limpieza', match: 'limpieza' },
         { valor: 'Obras', match: 'obras' },
-        { valor: 'Mercaderías', match: 'mercader' }
+        { valor: 'Papelería', match: 'papeleri' },
+        { valor: 'Ropa', match: 'ropa' },
+        { valor: 'Varios', match: 'varios' }
       ];
       const encontrada = opciones.find(o => catTexto.includes(o.match));
       if (encontrada) {
@@ -1241,7 +1249,7 @@
     reconocimientoVoz.interimResults = false;
 
     btn.classList.add('grabando');
-    estado.textContent = 'Escuchando... decí, por ejemplo: "estación Auca Rincón, categoría insumos, producto detergente, cantidad 200, motivo reposición de stock"';
+    estado.textContent = 'Escuchando... decí, por ejemplo: "estación Auca Rincón, categoría limpieza, producto detergente, cantidad 200, motivo reposición de stock"';
     estado.className = 'msg';
 
     reconocimientoVoz.onresult = function(event) {
