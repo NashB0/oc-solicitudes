@@ -29,6 +29,7 @@
     -webkit-text-fill-color: transparent;
   }
   * { box-sizing: border-box; margin:0; padding:0; }
+  html, body { overscroll-behavior-y: contain; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -37,6 +38,8 @@
     display:flex;
     flex-direction:column;
   }
+  #loginCaja { display:none; flex-direction:column; align-items:center; gap:16px; width:100%; max-width:420px; }
+  #loginCargando { color: var(--text-dim); font-size:15px; }
 
   /* ---------- Login ---------- */
   #loginScreen {
@@ -558,15 +561,18 @@
   <div id="loginScreen">
     <img class="logo" src="icon-192.png" alt="OC Solicitudes">
     <h1 class="texto-metal">OC Solicitudes</h1>
-    <input type="email" id="loginUser" placeholder="Email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <div class="pass-wrap">
-      <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
-      <button type="button" id="btnOjo" class="btn-ojo" onclick="alternarVerPass()" aria-label="Mostrar contraseña">
-        <svg id="iconoOjo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
+    <div id="loginCargando">Abriendo tu sesión...</div>
+    <div id="loginCaja">
+      <input type="email" id="loginUser" placeholder="Email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="pass-wrap">
+        <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+        <button type="button" id="btnOjo" class="btn-ojo" onclick="alternarVerPass()" aria-label="Mostrar contraseña">
+          <svg id="iconoOjo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
+      <div id="loginError"></div>
     </div>
-    <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
-    <div id="loginError"></div>
   </div>
 
   <div id="app">
@@ -828,6 +834,7 @@
 
     btnLogin.disabled = true;
     btnLogin.textContent = 'Ingresando...';
+    ingresandoManual = true;
 
     auth.signInWithEmailAndPassword(email, pass)
       .then(function(credencial) {
@@ -857,6 +864,7 @@
       .finally(function() {
         btnLogin.disabled = false;
         btnLogin.textContent = 'Ingresar';
+        ingresandoManual = false;
       });
   }
 
@@ -959,6 +967,7 @@
 
     document.getElementById('app').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
+    mostrarFormularioLogin();
   }
 
   // ---------- Navegación ----------
@@ -1173,6 +1182,41 @@
   }
 
   // Elige en un desplegable la opción que más se parece a lo dictado.
+  // Equivalencias para el dictado: lo que la gente dice en voz alta no coincide
+  // con los nombres abreviados de las estaciones. Cada estación suma un punto por
+  // cada palabra clave encontrada, y gana la que más puntos junta; así "axion
+  // plottier" no se confunde con "lg plottier".
+  const ESTACIONES_VOZ = [
+    { valor: 'Axion Jun.',      claves: ['axion', 'accion', 'action', 'junin', 'jun'] },
+    { valor: 'Axion Plo.',      claves: ['axion', 'accion', 'action', 'plottier', 'plotier', 'plo'] },
+    { valor: 'Axion Nqn.',      claves: ['axion', 'accion', 'action', 'neuquen', 'nqn'] },
+    { valor: 'LG Plottier',     claves: ['lg', 'ele ge', 'elege', 'plottier', 'plotier'] },
+    { valor: 'LG Rincón',       claves: ['lg', 'ele ge', 'elege', 'rincon'] },
+    { valor: 'Triángulos Bas.', claves: ['triangulo', 'triangulos', 'bas', 'bastias'] },
+    { valor: 'Triángulos TFE',  claves: ['triangulo', 'triangulos', 'tfe', 'te efe'] },
+    { valor: 'Auca Nqn.',       claves: ['auca', 'neuquen', 'nqn'] },
+    { valor: 'Auca Rincón',     claves: ['auca', 'rincon'] }
+  ];
+
+  function seleccionarEstacionPorVoz(texto) {
+    const dicho = ' ' + quitarAcentos(String(texto).toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+    const sel = document.getElementById('f_eess');
+    const disponibles = Array.from(sel.options).map(o => o.value).filter(v => v);
+
+    // Las claves se buscan como palabra completa: si no, "plo" aparecería dentro
+    // de "plottier" y Axion Plo. empataría con LG Plottier.
+    let mejor = null, mejorPuntaje = 0, empate = false;
+    ESTACIONES_VOZ.forEach(function(est) {
+      if (disponibles.indexOf(est.valor) === -1) return;
+      const puntaje = est.claves.filter(c => dicho.indexOf(' ' + c + ' ') !== -1).length;
+      if (puntaje > mejorPuntaje) { mejor = est.valor; mejorPuntaje = puntaje; empate = false; }
+      else if (puntaje === mejorPuntaje && puntaje > 0) { empate = true; }
+    });
+
+    if (mejor && !empate) { sel.value = mejor; return true; }
+    return false;
+  }
+
   function seleccionarPorTexto(selectId, texto) {
     const buscado = quitarAcentos(String(texto).toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').trim();
     if (!buscado) return;
@@ -1196,7 +1240,9 @@
     });
 
     if (resultados.eess) {
-      seleccionarPorTexto('f_eess', resultados.eess);
+      if (!seleccionarEstacionPorVoz(resultados.eess)) {
+        seleccionarPorTexto('f_eess', resultados.eess);
+      }
       actualizarEncargado('f');
     }
 
@@ -2448,6 +2494,42 @@
       mostrarToast('No se pudo generar el PDF: ' + err.message, true);
     }
   }
+  // ---------- Sesión guardada en el celular ----------
+  // Si el usuario ya entró antes desde este teléfono, la app lo reconoce sola y
+  // no le vuelve a pedir la contraseña, aunque la pantalla se recargue sin querer.
+  let ingresandoManual = false;
+
+  function mostrarFormularioLogin() {
+    const cargando = document.getElementById('loginCargando');
+    const caja = document.getElementById('loginCaja');
+    if (cargando) cargando.style.display = 'none';
+    if (caja) caja.style.display = 'flex';
+  }
+
+  function restaurarSesion(user) {
+    return db.collection('usuarios').doc(user.email).get().then(function(docUsuario) {
+      if (!docUsuario.exists) {
+        mostrarFormularioLogin();
+        return auth.signOut();
+      }
+      usuarioActual = { email: docUsuario.id, rol: docUsuario.data().rol };
+      if (usuarioActual.rol === 'encargado') return cargarListas().then(entrarComoEncargado);
+      if (usuarioActual.rol === 'compras') return entrarComoCompras();
+      if (usuarioActual.rol === 'gerencia') return entrarComoGerencia();
+      usuarioActual = null;
+      mostrarFormularioLogin();
+      return auth.signOut();
+    }).catch(function() {
+      usuarioActual = null;
+      mostrarFormularioLogin();
+    });
+  }
+
+  auth.onAuthStateChanged(function(user) {
+    if (ingresandoManual || usuarioActual) return;
+    if (!user) { mostrarFormularioLogin(); return; }
+    restaurarSesion(user);
+  });
 </script>
 
   <div id="modalFirma" class="modal-firma">
