@@ -1182,34 +1182,46 @@
   }
 
   // Elige en un desplegable la opción que más se parece a lo dictado.
-  // Equivalencias para el dictado: lo que la gente dice en voz alta no coincide
-  // con los nombres abreviados de las estaciones. Cada estación suma un punto por
-  // cada palabra clave encontrada, y gana la que más puntos junta; así "axion
-  // plottier" no se confunde con "lg plottier".
-  const ESTACIONES_VOZ = [
-    { valor: 'Axion Jun.',      claves: ['axion', 'accion', 'action', 'junin', 'jun'] },
-    { valor: 'Axion Plo.',      claves: ['axion', 'accion', 'action', 'plottier', 'plotier', 'plo'] },
-    { valor: 'Axion Nqn.',      claves: ['axion', 'accion', 'action', 'neuquen', 'nqn'] },
-    { valor: 'LG Plottier',     claves: ['lg', 'ele ge', 'elege', 'plottier', 'plotier'] },
-    { valor: 'LG Rincón',       claves: ['lg', 'ele ge', 'elege', 'rincon'] },
-    { valor: 'Triángulos Bas.', claves: ['triangulo', 'triangulos', 'bas', 'bastias'] },
-    { valor: 'Triángulos TFE',  claves: ['triangulo', 'triangulos', 'tfe', 'te efe'] },
-    { valor: 'Auca Nqn.',       claves: ['auca', 'neuquen', 'nqn'] },
-    { valor: 'Auca Rincón',     claves: ['auca', 'rincon'] }
-  ];
+  // Equivalencias para el dictado. En vez de una lista fija de estaciones, la app
+  // toma los nombres que estén cargados en Firebase y los compara con lo que se
+  // dijo, expandiendo las abreviaturas. Así, si mañana se renombra una estación,
+  // el dictado la sigue reconociendo sin tocar este archivo.
+  const ALIAS_VOZ = {
+    axion: ['accion', 'action', 'axion'],
+    lg: ['ele ge', 'elege', 'el ge'],
+    jun: ['junin', 'junin de los andes'],
+    plo: ['plottier', 'plotier'],
+    nqn: ['neuquen', 'neuquen capital'],
+    bas: ['bastias', 'bastia'],
+    stfe: ['santa fe', 'santafe'],
+    tfe: ['santa fe', 'santafe'],
+    triangulos: ['triangulo']
+  };
 
+  function normalizarVoz(texto) {
+    return quitarAcentos(String(texto).toLowerCase())
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Cada palabra del nombre de la estación suma un punto si aparece en lo dicho,
+  // ya sea tal cual o por alguna de sus formas habladas. Gana la que más puntos
+  // junta, y si hay empate no se elige ninguna, para no adivinar mal.
   function seleccionarEstacionPorVoz(texto) {
-    const dicho = ' ' + quitarAcentos(String(texto).toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+    const dicho = ' ' + normalizarVoz(texto) + ' ';
     const sel = document.getElementById('f_eess');
-    const disponibles = Array.from(sel.options).map(o => o.value).filter(v => v);
-
-    // Las claves se buscan como palabra completa: si no, "plo" aparecería dentro
-    // de "plottier" y Axion Plo. empataría con LG Plottier.
     let mejor = null, mejorPuntaje = 0, empate = false;
-    ESTACIONES_VOZ.forEach(function(est) {
-      if (disponibles.indexOf(est.valor) === -1) return;
-      const puntaje = est.claves.filter(c => dicho.indexOf(' ' + c + ' ') !== -1).length;
-      if (puntaje > mejorPuntaje) { mejor = est.valor; mejorPuntaje = puntaje; empate = false; }
+
+    Array.from(sel.options).forEach(function(op) {
+      if (!op.value) return;
+      const palabras = normalizarVoz(op.value).split(' ').filter(p => p.length > 1);
+      let puntaje = 0;
+      palabras.forEach(function(p) {
+        const formas = [p].concat(ALIAS_VOZ[p] || []);
+        if (formas.some(f => dicho.indexOf(' ' + f + ' ') !== -1)) puntaje++;
+      });
+      if (puntaje > mejorPuntaje) { mejor = op.value; mejorPuntaje = puntaje; empate = false; }
       else if (puntaje === mejorPuntaje && puntaje > 0) { empate = true; }
     });
 
