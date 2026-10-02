@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OC Solicitudes</title>
+<meta name="theme-color" content="#c9a86a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<script>
+  // ===== Entorno: real o de prueba =====
+  // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
+  //   nashb0.github.io/oc-solicitudes/        -> app REAL (proyecto Firebase oc-solicitudes)
+  //   nashb0.github.io/oc-solicitudes/test/   -> ENTORNO DE PRUEBA (proyecto test-oc-solicitudes)
+  // Es de prueba únicamente si la dirección pasa por una carpeta llamada "test".
+  // De esta decisión dependen tres cosas, más abajo en el archivo: el proyecto Firebase,
+  // el almacén local del celular (IndexedDB) y la franja de aviso.
+  // El ícono y el manifest no se deciden acá: cada carpeta tiene los suyos (manifest.json,
+  // icon-192.png, icon-512.png). Los de test/ son el ícono con la "T" y la app "OC Prueba".
+  var ES_PRUEBA = location.pathname.split('/').indexOf('test') !== -1;
+  if (ES_PRUEBA) {
+    document.documentElement.className += ' entorno-prueba';
+    document.title = 'PRUEBA · OC Solicitudes';
+  }
+</script>
+<style>
+  :root {
+    --gold: #c9a86a;
+    --gold-light: #f2e0b4;
+    --gold-dark: #8a6d3b;
+    --gold-metal: linear-gradient(160deg, var(--gold-light) 0%, var(--gold) 45%, var(--gold-dark) 100%);
+    --bg: #121212;
+    --bg-card: #1e1e1e;
+    --text: #f5f5f5;
+    --text-dim: #999;
+    --rojo: #e05c5c;
+    color-scheme: dark;
+  }
+  .texto-metal {
+    background: var(--gold-metal);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: var(--gold);
+    -webkit-text-fill-color: transparent;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  html, body { overscroll-behavior-y: contain; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  #loginCaja { display:none; flex-direction:column; align-items:center; gap:16px; width:100%; max-width:420px; }
+  #loginCargando { color: var(--text-dim); font-size:15px; }
+
+  /* ---------- Login ---------- */
+  #loginScreen {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    gap:16px;
+  }
+  #loginScreen .logo { width:96px; height:96px; margin-bottom:8px; }
+  #loginScreen h1 {
+    font-size:20px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color: var(--gold);
+    margin-bottom:24px;
+  }
+  #loginScreen input {
+    width:100%;
+    max-width:320px;
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:8px;
+    border:1px solid #333;
+    background:var(--bg-card);
+    color:var(--text);
+    font-size:16px;
+  }
+  #loginScreen button {
+    width:100%;
+    max-width:320px;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-size:15px;
+  }
+  #loginError { color:var(--rojo); font-size:13px; min-height:18px; text-align:center; }
+  .pass-wrap {
+    position:relative;
+    width:100%;
+    max-width:320px;
+    margin-bottom:12px;
+  }
+  #loginScreen .pass-wrap input {
+    max-width:none;
+    margin-bottom:0;
+    padding-right:52px;
+  }
+  #loginScreen .btn-ojo {
+    position:absolute;
+    top:0; right:0; bottom:0;
+    width:48px;
+    max-width:none;
+    padding:0;
+    border:none;
+    border-radius:0 8px 8px 0;
+    background:transparent;
+    box-shadow:none;
+    color: var(--text-dim);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #loginScreen .btn-ojo.activo { color: var(--gold); }
+  #loginScreen .btn-ojo svg { width:22px; height:22px; }
+
+  /* ---------- App ---------- */
+  #app { display:none; flex-direction:column; flex:1; min-height:100vh; }
+  header {
+    position:relative;
+    padding:18px 60px 14px;
+    text-align:center;
+    border-bottom:1px solid #262626;
+  }
+  header h1 {
+    font-size:16px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color: var(--gold);
+  }
+  .btn-salir {
+    position:absolute;
+    top:50%; right:12px;
+    transform:translateY(-50%);
+    background:transparent;
+    border:1px solid #333;
+    border-radius:8px;
+    color: var(--text-dim);
+    padding:7px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .btn-salir svg { width:20px; height:20px; }
+  main { flex:1; padding:16px; padding-bottom:90px; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+  .placeholder { color: var(--text-dim); text-align:center; margin-top:60px; font-size:14px; line-height:1.5; white-space:pre-line; }
+  nav.bottom-nav {
+    position:fixed;
+    bottom:0; left:0; right:0;
+    display:flex;
+    background: var(--bg-card);
+    border-top:1px solid #262626;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  nav.bottom-nav button {
+    flex:1;
+    background:none;
+    border:none;
+    color: var(--text-dim);
+    padding:12px 4px 10px;
+    font-size:11px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+  nav.bottom-nav button.active { color: var(--gold); }
+  nav.bottom-nav button { position:relative; }
+  .badge-nav {
+    display:none;
+    position:absolute;
+    top:6px; left:50%;
+    margin-left:6px;
+    min-width:18px; height:18px;
+    padding:0 5px;
+    border-radius:9px;
+    background:var(--rojo);
+    color:#fff;
+    font-size:11px;
+    font-weight:bold;
+    align-items:center;
+    justify-content:center;
+    letter-spacing:0;
+  }
+  nav.bottom-nav svg { width:22px; height:22px; }
+
+  /* ---------- Selector de tipo de compra ---------- */
+  .selector-modo {
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .selector-modo button {
+    flex:1;
+    padding:12px 6px;
+    border-radius:8px;
+    border:2px solid var(--gold);
+    background:transparent;
+    color: var(--gold);
+    font-weight:bold;
+    font-size:13px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    line-height:1.25;
+  }
+  .selector-modo button small {
+    display:block;
+    font-size:10px;
+    font-weight:normal;
+    letter-spacing:0;
+    text-transform:none;
+    margin-top:2px;
+  }
+  .selector-modo button.activo {
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+  }
+  .ayuda-modo {
+    font-size:12px;
+    color: var(--text-dim);
+    margin-bottom:16px;
+    line-height:1.4;
+  }
+
+  /* ---------- Formularios ---------- */
+  form label { display:block; margin-bottom:14px; font-size:13px; color:var(--text-dim); }
+  form input[type="text"], form input[type="date"], form input[type="number"], form textarea, form select {
+    width:100%; margin-top:6px; padding:12px; border-radius:8px; border:1px solid #333;
+    background:var(--bg-card); color:var(--text); font-size:15px; font-family:inherit;
+  }
+  form textarea { resize:vertical; }
+  form input.campo-fijo {
+    background:#171717;
+    color: var(--gold-light);
+    border-color:#2a2a2a;
+    pointer-events:none;
+  }
+  form input.campo-fijo::placeholder { color:#666; }
+  fieldset { border:1px solid #333; border-radius:8px; padding:10px 12px; margin-bottom:14px; }
+  fieldset legend { padding:0 6px; font-size:13px; color:var(--text-dim); }
+  label.radio { display:inline-flex; align-items:center; gap:6px; margin-right:14px; margin-bottom:6px; font-size:14px; color:var(--text); }
+  label.radio input { width:auto; }
+  form button[type="submit"] {
+    width:100%; padding:14px; border:none; border-radius:8px; background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:15px; margin-top:6px;
+  }
+  form button[type="submit"]:disabled { opacity:0.5; }
+  .msg { min-height:20px; margin-top:10px; font-size:13px; }
+  .msg.ok { color:#7fd88f; }
+  .msg.error { color:var(--rojo); }
+  .aviso-importe {
+    display:none;
+    margin:-6px 0 14px;
+    padding:10px 12px;
+    border:1px solid var(--rojo);
+    border-radius:8px;
+    font-size:13px;
+    color:#f0b0b0;
+    line-height:1.4;
+  }
+  .aviso-importe button {
+    display:block;
+    margin-top:8px;
+    background:transparent;
+    border:1px solid var(--gold);
+    color: var(--gold);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:12px;
+    font-weight:bold;
+    text-transform:uppercase;
+  }
+
+  .btn-dictar {
+    width:100%;
+    padding:14px;
+    border:2px solid var(--gold);
+    border-radius:8px;
+    background:transparent;
+    color: var(--gold);
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-size:14px;
+    margin-bottom:8px;
+    box-shadow: 0 0 6px rgba(201,168,106,0.25);
+  }
+  .btn-dictar.grabando {
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+    animation: pulsoDictado 1s infinite;
+  }
+  @keyframes pulsoDictado {
+    0%, 100% { opacity:1; }
+    50% { opacity:0.55; }
+  }
+  #dictadoEstado { margin-bottom:16px; }
+
+  /* ---------- Tarjetas ---------- */
+  .card {
+    background:var(--bg-card); border:1px solid #262626; border-radius:10px;
+    padding:14px; margin-bottom:12px;
+  }
+  .card .card-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:8px; }
+  .card .card-title { font-weight:bold; color:var(--gold); font-size:14px; }
+  .card .card-date { font-size:11px; color:var(--text-dim); white-space:nowrap; }
+  .card .card-row { font-size:13px; color:var(--text); margin-bottom:2px; }
+  .badge {
+    display:inline-block; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px;
+    letter-spacing:0.5px; text-transform:uppercase; vertical-align:middle;
+  }
+  .badge-urgencia { background:var(--rojo); color:#fff; }
+  .card .btn-generar-pdf {
+    margin-top:10px;
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:6px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+    font-weight:bold;
+    font-size:12px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .card .btn-generar-pdf:disabled { opacity:0.5; }
+  .card .card-estado {
+    font-size:10px;
+    color: var(--text-dim);
+    margin-top:8px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+
+  /* ---------- Modal de firma ---------- */
+  .modal-firma {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#000;
+    z-index:1000;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    gap:16px;
+  }
+  .modal-firma h2 {
+    font-size:16px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    text-align:center;
+  }
+  .firma-wrap {
+    width:100%;
+    max-width:480px;
+    aspect-ratio: 600 / 260;
+    background:#fff;
+    border-radius:8px;
+    border:3px solid var(--gold);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.15), 0 0 10px rgba(201,168,106,0.4);
+    overflow:hidden;
+  }
+  .firma-wrap canvas {
+    width:100%;
+    height:100%;
+    display:block;
+    touch-action:none;
+  }
+  .firma-ayuda {
+    color:#ccc;
+    font-size:12px;
+    text-align:center;
+  }
+  .firma-controles {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .btn-secundario {
+    background:transparent; border:1px solid #fff; color:#fff;
+    padding:10px 16px; border-radius:8px; font-size:13px;
+  }
+  .btn-principal {
+    padding:12px 20px;
+    border:none;
+    border-radius:8px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212;
+    font-weight:bold;
+    font-size:13px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+
+  /* ---------- Modal de aviso / confirmación ---------- */
+  .modal-aviso {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.8);
+    z-index:1100;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .aviso-caja {
+    background: var(--bg-card);
+    border:1px solid var(--gold);
+    border-radius:12px;
+    padding:22px;
+    width:100%;
+    max-width:360px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    box-shadow: 0 0 14px rgba(201,168,106,0.25);
+  }
+  .aviso-caja h2 {
+    font-size:15px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .aviso-caja p {
+    font-size:14px;
+    line-height:1.45;
+    color: var(--text);
+    white-space:pre-line;
+  }
+  .aviso-botones {
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+
+  /* ---------- Paneles Compras / Gerencia ---------- */
+  .card-click { cursor:pointer; }
+  .card-click:active { border-color: var(--gold); }
+  .card .card-pie { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
+  .card .card-ver { font-size:12px; color: var(--gold); }
+  .card .card-motivo { color: var(--text-dim); }
+  .chip {
+    display:inline-block; font-size:10px; padding:3px 8px; border-radius:10px;
+    letter-spacing:0.5px; text-transform:uppercase; border:1px solid #444; color: var(--text-dim);
+  }
+  .chip-accion { border-color: var(--gold); color: var(--gold); }
+  .chip-espera { border-color:#6b8fd6; color:#9db6ec; }
+  .chip-ok { border-color:#58b86a; color:#8fdc9d; }
+  .chip-rechazo { border-color: var(--rojo); color:#f0a0a0; }
+  .chip-fin { border-color:#555; color:#aaa; }
+
+  .modal-detalle {
+    display:none;
+    position:fixed;
+    inset:0;
+    background: var(--bg);
+    z-index:900;
+    flex-direction:column;
+  }
+  .detalle-barra {
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px; border-bottom:1px solid #262626;
+  }
+  .detalle-barra button {
+    background:transparent; border:1px solid #333; color: var(--gold);
+    border-radius:8px; padding:8px 12px; font-size:13px; font-weight:bold;
+  }
+  .detalle-barra span { font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color: var(--text-dim); }
+  .detalle-cuerpo { flex:1; overflow-y:auto; padding:16px 16px 40px; }
+  .detalle-cab { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:14px; }
+  .detalle-cab h2 { font-size:18px; color: var(--gold); }
+  .detalle-seccion { background: var(--bg-card); border:1px solid #262626; border-radius:10px; padding:4px 14px; margin-bottom:12px; }
+  .dato { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid #262626; font-size:13px; }
+  .dato:last-child { border-bottom:none; }
+  .dato span { color: var(--text-dim); flex-shrink:0; }
+  .dato b { font-weight:normal; text-align:right; white-space:pre-wrap; word-break:break-word; }
+  .detalle-titulo { font-size:13px; letter-spacing:1px; text-transform:uppercase; color: var(--gold); margin:18px 0 10px; }
+  .detalle-nota { font-size:12px; color: var(--text-dim); margin:6px 0 10px; line-height:1.4; }
+  .detalle-info { font-size:13px; color:#9db6ec; margin:14px 0; text-align:center; }
+  .detalle-label { display:block; font-size:13px; color: var(--text-dim); margin:14px 0 4px; }
+  .detalle-label textarea, .presu-form input {
+    width:100%; margin-top:6px; padding:12px; border-radius:8px; border:1px solid #333;
+    background: var(--bg-card); color: var(--text); font-size:15px; font-family:inherit;
+  }
+  .presu-form { display:flex; flex-direction:column; gap:8px; margin:8px 0 14px; }
+  .presu-form input { margin-top:0; }
+  .presu {
+    display:flex; align-items:center; gap:12px;
+    background: var(--bg-card); border:1px solid #333; border-radius:10px;
+    padding:12px; margin-bottom:8px;
+  }
+  .presu input[type="radio"] { width:22px; height:22px; accent-color: var(--gold); flex-shrink:0; }
+  .presu-elegido { border-color:#58b86a; }
+  .presu-info { flex:1; display:flex; flex-direction:column; gap:3px; font-size:13px; }
+  .presu-monto { color: var(--gold-light); font-size:15px; }
+  .presu-obs { color: var(--text-dim); font-size:12px; }
+  .presu-marca { color:#8fdc9d; font-size:12px; }
+  .presu-quitar {
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--rojo);
+    background:transparent; color: var(--rojo); font-size:18px; line-height:1; flex-shrink:0;
+  }
+  .btn-contorno {
+    width:100%; padding:12px; border:2px solid var(--gold); border-radius:8px;
+    background:transparent; color: var(--gold); font-weight:bold; font-size:13px;
+    letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .btn-contorno:disabled { opacity:0.5; }
+  .btn-accion {
+    width:100%; padding:14px; border:none; border-radius:8px; margin-top:6px;
+    background: var(--gold-metal);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.4);
+    color:#121212; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:14px;
+  }
+  .btn-accion:disabled { opacity:0.45; }
+  .btn-rechazo {
+    width:100%; padding:14px; border:2px solid var(--rojo); border-radius:8px; margin-top:6px;
+    background:transparent; color:#f0a0a0; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:14px;
+  }
+  .btn-rechazo:disabled { opacity:0.45; }
+  .botones-fila { display:flex; gap:10px; }
+  .btn-rechazo-compras { margin-top:18px; }
+  .detalle-resolucion {
+    display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.4;
+    border-radius:10px; padding:12px; margin:14px 0; border:1px solid #444;
+  }
+  .detalle-resolucion.ok { border-color:#58b86a; color:#8fdc9d; }
+  .detalle-resolucion.rechazo { border-color: var(--rojo); color:#f0b0b0; }
+  .detalle-resolucion.fin { border-color:#555; color:#ccc; }
+  .aviso-caja textarea {
+    width:100%; padding:10px; border-radius:8px; border:1px solid #333;
+    background:#141414; color: var(--text); font-size:14px; font-family:inherit; resize:vertical;
+  }
+
+  .toast {
+    position:fixed; left:16px; right:16px; top:74px; z-index:1200;
+    background:#2a2416; border:1px solid var(--gold); color: var(--gold-light);
+    border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.4;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    opacity:0; transform:translateY(-10px); pointer-events:none;
+    transition: opacity .25s, transform .25s;
+  }
+  .toast.visible { opacity:1; transform:translateY(0); }
+  .toast.error { background:#2a1616; border-color: var(--rojo); color:#f3c0c0; }
+
+  /* ---------- Entorno de prueba ---------- */
+  /* Todo este bloque solo actúa cuando la página se abre desde /test/.
+     En la app real la franja no existe y nada de la disposición cambia. */
+  #franjaPrueba { display:none; }
+  html.entorno-prueba { --franja:34px; }
+  html.entorno-prueba #franjaPrueba {
+    display:flex; align-items:center; justify-content:center;
+    position:fixed; top:0; left:0; right:0; height:var(--franja); z-index:3000;
+    background: var(--gold-metal);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+  html.entorno-prueba #franjaPrueba span {
+    color:#121212;
+    font-size:13px; font-weight:800; letter-spacing:3px; white-space:nowrap;
+  }
+  /* La franja queda siempre arriba de todo, así que lo demás se corre hacia abajo. */
+  html.entorno-prueba body { padding-top:var(--franja); }
+  html.entorno-prueba #app { min-height:calc(100vh - var(--franja)); }
+  html.entorno-prueba .modal-firma,
+  html.entorno-prueba .modal-aviso,
+  html.entorno-prueba .modal-detalle { top:var(--franja); }
+  html.entorno-prueba .toast { top:calc(74px + var(--franja)); }
+</style>
+</head>
+<body>
+
+  <div id="franjaPrueba" role="status"><span>ENTORNO DE PRUEBA</span></div>
+
+  <div id="loginScreen">
+    <img class="logo" src="icon-192.png" alt="OC Solicitudes">
+    <h1 class="texto-metal">OC Solicitudes</h1>
+    <div id="loginCargando">Abriendo tu sesión...</div>
+    <div id="loginCaja">
+      <input type="email" id="loginUser" placeholder="Email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="pass-wrap">
+        <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+        <button type="button" id="btnOjo" class="btn-ojo" onclick="alternarVerPass()" aria-label="Mostrar contraseña">
+          <svg id="iconoOjo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
+      <div id="loginError"></div>
+    </div>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1 id="tabTitle" class="texto-metal">Inicio</h1>
+      <button type="button" class="btn-salir" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </header>
+    <main>
+      <!-- ===== INICIO (Encargado) ===== -->
+      <div id="tab-inicio" class="tab-content active">
+        <div class="selector-modo">
+          <button type="button" id="btnModoNormal" class="activo" onclick="seleccionarModo('normal')">
+            Compra normal
+            <small>Pedir aprobación</small>
+          </button>
+          <button type="button" id="btnModoUrgencia" onclick="seleccionarModo('urgencia')">
+            Compra de urgencia
+            <small>Ya realizada, menor a $200.000</small>
+          </button>
+        </div>
+        <p class="ayuda-modo" id="ayudaModo">Cargá lo que necesitás. Compras lo va a presupuestar y Gerencia lo va a aprobar.</p>
+
+        <!-- Formulario: compra normal -->
+        <form id="formSolicitud" onsubmit="return guardarSolicitud(event)">
+          <button type="button" id="btnDictar" class="btn-dictar" onclick="iniciarDictado()">🎤 Dictar solicitud</button>
+          <div id="dictadoEstado" class="msg"></div>
+
+          <label>EESS / Destino
+            <select id="f_eess" required onchange="actualizarEncargado('f')"></select>
+          </label>
+
+          <label>Encargado
+            <input type="text" id="f_encargado" class="campo-fijo" readonly tabindex="-1" placeholder="Se completa al elegir la estación">
+          </label>
+
+          <label>Fecha
+            <input type="date" id="f_fecha" required>
+          </label>
+
+          <fieldset>
+            <legend>Categoría</legend>
+            <label class="radio"><input type="radio" name="f_categoria" value="Computación" required> Computación</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Imagen"> Imagen</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Librería"> Librería</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Limpieza"> Limpieza</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Obras"> Obras</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Papelería"> Papelería</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Ropa"> Ropa</label>
+            <label class="radio"><input type="radio" name="f_categoria" value="Varios"> Varios</label>
+          </fieldset>
+
+          <label>Producto / Servicio solicitado
+            <input type="text" id="f_producto" required>
+          </label>
+
+          <label>Cantidad
+            <input type="number" id="f_cantidad" min="1" step="1" inputmode="numeric" required>
+          </label>
+
+          <label>Fecha en que se necesita
+            <input type="date" id="f_fechaNecesaria" required>
+          </label>
+
+          <label>Motivo / Justificación
+            <textarea id="f_motivo" rows="3" required></textarea>
+          </label>
+
+          <label>Características / Especificaciones
+            <textarea id="f_caracteristicas" rows="3"></textarea>
+          </label>
+
+          <button type="submit">Generar solicitud</button>
+          <div id="f_msg" class="msg"></div>
+        </form>
+
+        <!-- Formulario: compra de urgencia -->
+        <form id="formUrgencia" onsubmit="return informarUrgencia(event)" style="display:none">
+          <label>EESS / Destino
+            <select id="u_eess" required onchange="actualizarEncargado('u')"></select>
+          </label>
+
+          <label>Encargado
+            <input type="text" id="u_encargado" class="campo-fijo" readonly tabindex="-1" placeholder="Se completa al elegir la estación">
+          </label>
+
+          <label>Fecha de la compra
+            <input type="date" id="u_fecha" required>
+          </label>
+
+          <label>Detalle de lo comprado
+            <textarea id="u_detalle" rows="3" required></textarea>
+          </label>
+
+          <label>Motivo de la urgencia
+            <textarea id="u_motivo" rows="2" required></textarea>
+          </label>
+
+          <label>Importe total ($)
+            <input type="number" id="u_importe" min="1" step="0.01" inputmode="decimal" required oninput="validarImporte()">
+          </label>
+          <div id="u_avisoImporte" class="aviso-importe">
+            Las compras de $200.000 o más no se pueden hacer como urgencia: tienen que pedirse como <b>Compra normal</b> y esperar la aprobación.
+            <button type="button" onclick="seleccionarModo('normal')">Ir a Compra normal</button>
+          </div>
+
+          <label>Proveedor
+            <input type="text" id="u_proveedor" required>
+          </label>
+
+          <label>N.° de comprobante / factura
+            <input type="text" id="u_comprobante" required>
+          </label>
+
+          <button type="submit" id="btnInformar">Informar compra a Compras</button>
+          <div id="u_msg" class="msg"></div>
+        </form>
+      </div>
+
+      <div id="tab-generadas" class="tab-content">
+        <p class="placeholder" id="generadasVacio">No tenés solicitudes pendientes de firmar.</p>
+        <div id="listaGeneradas"></div>
+      </div>
+      <div id="tab-historial" class="tab-content">
+        <p class="placeholder" id="historialVacio">Todavía no se envió nada desde este celular.</p>
+        <div id="listaHistorial"></div>
+      </div>
+
+      <!-- ===== Compras ===== -->
+      <div id="tab-cSolicitudes" class="tab-content"><div id="listaCSolicitudes"></div></div>
+      <div id="tab-cUrgencias" class="tab-content"><div id="listaCUrgencias"></div></div>
+      <div id="tab-cHistorial" class="tab-content"><div id="listaCHistorial"></div></div>
+
+      <!-- ===== Gerencia ===== -->
+      <div id="tab-gPorAprobar" class="tab-content"><div id="listaGPorAprobar"></div></div>
+      <div id="tab-gHistorial" class="tab-content"><div id="listaGHistorial"></div></div>
+    </main>
+    <nav class="bottom-nav" id="navEncargado">
+      <button id="nav-inicio" class="active" onclick="mostrarTab('inicio')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        Inicio
+      </button>
+      <button id="nav-generadas" onclick="mostrarTab('generadas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Generadas
+      </button>
+      <button id="nav-historial" onclick="mostrarTab('historial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+        <span class="badge-nav" id="badgeHistorial"></span>
+      </button>
+    </nav>
+
+    <nav class="bottom-nav" id="navCompras" style="display:none">
+      <button id="nav-cSolicitudes" onclick="mostrarTab('cSolicitudes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Solicitudes
+        <span class="badge-nav" id="badgeCSolicitudes"></span>
+      </button>
+      <button id="nav-cUrgencias" onclick="mostrarTab('cUrgencias')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
+        Urgencias
+        <span class="badge-nav" id="badgeCUrgencias"></span>
+      </button>
+      <button id="nav-cHistorial" onclick="mostrarTab('cHistorial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+      </button>
+    </nav>
+
+    <nav class="bottom-nav" id="navGerencia" style="display:none">
+      <button id="nav-gPorAprobar" onclick="mostrarTab('gPorAprobar')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        Por aprobar
+        <span class="badge-nav" id="badgeGPorAprobar"></span>
+      </button>
+      <button id="nav-gHistorial" onclick="mostrarTab('gHistorial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historial
+      </button>
+    </nav>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script>
+  // Proyecto Firebase de la app real.
+  const CONFIG_REAL = {
+    apiKey: "AIzaSyAlRVgYaty5lVVVBPrUa13M53_p7V0ah-g",
+    authDomain: "oc-solicitudes.firebaseapp.com",
+    projectId: "oc-solicitudes",
+    storageBucket: "oc-solicitudes.firebasestorage.app",
+    messagingSenderId: "782963757998",
+    appId: "1:782963757998:web:83f24fa6ebcdd39aba2e3f"
+  };
+  // Proyecto Firebase del entorno de prueba. Tiene sus propios usuarios (los t-) y su propia base.
+  const CONFIG_PRUEBA = {
+    apiKey: "AIzaSyALZqttJXDdvDX3RtTLGoTJjtJBxu84npM",
+    authDomain: "test-oc-solicitudes.firebaseapp.com",
+    projectId: "test-oc-solicitudes",
+    storageBucket: "test-oc-solicitudes.firebasestorage.app",
+    messagingSenderId: "784286676089",
+    appId: "1:784286676089:web:d92282ead20ccc171410a8"
+  };
+  // ES_PRUEBA se define al principio del archivo, según la dirección desde la que se abre.
+  const firebaseConfig = ES_PRUEBA ? CONFIG_PRUEBA : CONFIG_REAL;
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const LIMITE_URGENCIA = 200000;
+
+  let usuarioActual = null;
+  let listas = { estaciones: [], encargados: [] };
+  let modoActual = 'normal';
+
+  window.addEventListener('error', function(e) {
+    mostrarMensaje('Error inesperado: ' + (e.message || 'sin detalle'), true);
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    mostrarMensaje('Error inesperado: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), true);
+  });
+
+  function mostrarMensaje(texto, esError) {
+    if (usuarioActual && usuarioActual.rol !== 'encargado') {
+      mostrarToast(texto, esError);
+      return;
+    }
+    const id = modoActual === 'urgencia' ? 'u_msg' : 'f_msg';
+    const msg = document.getElementById(id);
+    if (!msg) return;
+    msg.textContent = texto;
+    msg.className = 'msg' + (esError ? ' error' : '');
+  }
+
+  // ---------- Login ----------
+  function mensajeErrorLogin(codigo) {
+    switch (codigo) {
+      case 'auth/invalid-email':
+        return 'El email no es válido.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Usuario o contraseña incorrectos.';
+      case 'auth/too-many-requests':
+        return 'Demasiados intentos. Esperá un momento y probá de nuevo.';
+      case 'auth/network-request-failed':
+      case 'unavailable':
+        return 'No hay conexión a internet. Probá de nuevo.';
+      case 'sin-listas':
+        return 'No se pudieron cargar las estaciones. Avisale al administrador.';
+      default:
+        return 'No se pudo iniciar sesión (' + codigo + ').';
+    }
+  }
+
+  function intentarLogin() {
+    const email = document.getElementById('loginUser').value.trim().toLowerCase();
+    const pass = document.getElementById('loginPass').value.trim();
+    const errorBox = document.getElementById('loginError');
+    const btnLogin = document.getElementById('btnLogin');
+
+    errorBox.textContent = '';
+    if (!email || !pass) {
+      errorBox.textContent = 'Completá el email y la contraseña';
+      return;
+    }
+
+    btnLogin.disabled = true;
+    btnLogin.textContent = 'Ingresando...';
+    ingresandoManual = true;
+
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(function(credencial) {
+        return db.collection('usuarios').doc(credencial.user.email).get();
+      })
+      .then(function(docUsuario) {
+        if (!docUsuario.exists) {
+          errorBox.textContent = 'Tu usuario no tiene un rol asignado. Avisale al administrador.';
+          return auth.signOut();
+        }
+        const datos = docUsuario.data();
+        usuarioActual = { email: docUsuario.id, rol: datos.rol };
+
+        if (usuarioActual.rol === 'encargado') {
+          return cargarListas().then(entrarComoEncargado);
+        }
+        if (usuarioActual.rol === 'compras') return entrarComoCompras();
+        if (usuarioActual.rol === 'gerencia') return entrarComoGerencia();
+        errorBox.textContent = 'Tu usuario tiene un rol desconocido. Avisale al administrador.';
+        usuarioActual = null;
+        return auth.signOut();
+      })
+      .catch(function(err) {
+        usuarioActual = null;
+        errorBox.textContent = mensajeErrorLogin(err && err.code ? err.code : (err && err.message) || 'desconocido');
+      })
+      .finally(function() {
+        btnLogin.disabled = false;
+        btnLogin.textContent = 'Ingresar';
+        ingresandoManual = false;
+      });
+  }
+
+  function cargarListas() {
+    return db.collection('config').doc('listas').get().then(function(doc) {
+      const d = doc.exists ? doc.data() : null;
+      if (!d || !Array.isArray(d.estaciones) || !d.estaciones.length || !Array.isArray(d.encargados) || !d.encargados.length) {
+        const e = new Error('sin-listas');
+        e.code = 'sin-listas';
+        throw e;
+      }
+      if (d.estaciones.length !== d.encargados.length) {
+        const e2 = new Error('sin-listas');
+        e2.code = 'sin-listas';
+        throw e2;
+      }
+      listas = { estaciones: d.estaciones, encargados: d.encargados };
+      ['f_eess', 'u_eess'].forEach(function(id) { llenarSelect(id, listas.estaciones, 'Elegí la estación'); });
+      actualizarEncargado('f');
+      actualizarEncargado('u');
+    });
+  }
+
+  function llenarSelect(id, items, textoVacio) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    const vacia = document.createElement('option');
+    vacia.value = '';
+    vacia.textContent = textoVacio;
+    sel.appendChild(vacia);
+    items.forEach(function(item) {
+      const op = document.createElement('option');
+      op.value = item;
+      op.textContent = item;
+      sel.appendChild(op);
+    });
+  }
+
+  // Cada estación tiene un único encargado: van emparejados por posición en config/listas.
+  function encargadoDeEstacion(estacion) {
+    const i = listas.estaciones.indexOf(estacion);
+    return i >= 0 ? listas.encargados[i] : '';
+  }
+
+  function actualizarEncargado(prefijo) {
+    const estacion = document.getElementById(prefijo + '_eess').value;
+    document.getElementById(prefijo + '_encargado').value = encargadoDeEstacion(estacion);
+  }
+
+  function entrarComoEncargado() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    mostrarNav('encargado');
+    seleccionarModo('normal');
+    ponerFechasDeHoy();
+    mostrarTab('inicio');
+    renderGeneradas();
+    renderHistorial();
+    iniciarSeguimientoHistorial();
+  }
+
+  const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
+  const SVG_OJO_TACHADO = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
+
+  function alternarVerPass() {
+    const input = document.getElementById('loginPass');
+    const btn = document.getElementById('btnOjo');
+    const icono = document.getElementById('iconoOjo');
+    const mostrar = input.type === 'password';
+    input.type = mostrar ? 'text' : 'password';
+    icono.innerHTML = mostrar ? SVG_OJO_TACHADO : SVG_OJO_ABIERTO;
+    btn.classList.toggle('activo', mostrar);
+    btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  }
+
+  function cerrarSesion() {
+    if (!confirm('¿Querés cerrar sesión?')) return;
+
+    auth.signOut().catch(function() {});
+    usuarioActual = null;
+
+    document.getElementById('formSolicitud').reset();
+    document.getElementById('formUrgencia').reset();
+    validarImporte();
+    ['f_msg', 'u_msg', 'dictadoEstado'].forEach(function(id) { document.getElementById(id).textContent = ''; });
+    document.getElementById('listaGeneradas').innerHTML = '';
+    document.getElementById('listaHistorial').innerHTML = '';
+    cacheSolicitudes.clear();
+    detenerEscuchas();
+    detenerSeguimientoHistorial();
+    cerrarDetalle();
+    datosSolicitudes = [];
+    datosUrgencias = [];
+    ['badgeCSolicitudes', 'badgeCUrgencias', 'badgeGPorAprobar', 'badgeHistorial'].forEach(function(id) { ponerBadge(id, 0); });
+
+    const pass = document.getElementById('loginPass');
+    pass.value = '';
+    if (pass.type === 'text') alternarVerPass();
+    document.getElementById('loginError').textContent = '';
+
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    mostrarFormularioLogin();
+  }
+
+  // ---------- Navegación ----------
+  const TITULOS = {
+    inicio: "Inicio",
+    generadas: "Pendientes de firma",
+    historial: "Historial de envíos",
+    cSolicitudes: "Solicitudes",
+    cUrgencias: "Compras de urgencia",
+    cHistorial: "Órdenes cerradas",
+    gPorAprobar: "Por aprobar",
+    gHistorial: "Historial"
+  };
+
+  const NAV_POR_ROL = { encargado: 'navEncargado', compras: 'navCompras', gerencia: 'navGerencia' };
+  const TAB_INICIAL = { encargado: 'inicio', compras: 'cSolicitudes', gerencia: 'gPorAprobar' };
+
+  function mostrarNav(rol) {
+    Object.keys(NAV_POR_ROL).forEach(function(r) {
+      document.getElementById(NAV_POR_ROL[r]).style.display = r === rol ? 'flex' : 'none';
+    });
+  }
+
+  let tabActual = 'inicio';
+
+  function mostrarTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav button').forEach(el => el.classList.remove('active'));
+
+    document.getElementById('tab-' + id).classList.add('active');
+    document.getElementById('nav-' + id).classList.add('active');
+    document.getElementById('tabTitle').textContent = TITULOS[id];
+    window.scrollTo(0, 0);
+    tabActual = id;
+    if (id === 'historial') {
+      marcarHistorialVisto().then(function() { renderHistorial(); });
+    }
+  }
+
+  function seleccionarModo(modo) {
+    modoActual = modo;
+    const esUrgencia = modo === 'urgencia';
+    document.getElementById('btnModoNormal').classList.toggle('activo', !esUrgencia);
+    document.getElementById('btnModoUrgencia').classList.toggle('activo', esUrgencia);
+    document.getElementById('formSolicitud').style.display = esUrgencia ? 'none' : 'block';
+    document.getElementById('formUrgencia').style.display = esUrgencia ? 'block' : 'none';
+    document.getElementById('ayudaModo').textContent = esUrgencia
+      ? 'Informá una compra que ya hiciste por menos de $200.000. Compras la va a registrar.'
+      : 'Cargá lo que necesitás. Compras lo va a presupuestar y Gerencia lo va a aprobar.';
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- Utilidades ----------
+  function hoyISO() {
+    const d = new Date();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mes + '-' + dia;
+  }
+
+  function ponerFechasDeHoy() {
+    document.getElementById('f_fecha').value = hoyISO();
+    document.getElementById('u_fecha').value = hoyISO();
+  }
+
+  function fechaCorta(iso) {
+    if (!iso) return '';
+    const p = String(iso).slice(0, 10).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+
+  function formatoPesos(n) {
+    return '$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function escaparHTML(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function generarId(prefijo) {
+    return prefijo + Date.now();
+  }
+
+  function mostrarAviso(titulo, texto) {
+    return new Promise(function(resolve) {
+      document.getElementById('avisoTitulo').textContent = titulo;
+      document.getElementById('avisoTexto').textContent = texto;
+      const botones = document.getElementById('avisoBotones');
+      botones.innerHTML = '';
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'btn-principal';
+      ok.textContent = 'Entendido';
+      ok.onclick = function() { cerrarAviso(); resolve(true); };
+      botones.appendChild(ok);
+      document.getElementById('modalAviso').style.display = 'flex';
+    });
+  }
+
+  function pedirConfirmacion(titulo, texto, textoSi) {
+    return new Promise(function(resolve) {
+      document.getElementById('avisoTitulo').textContent = titulo;
+      document.getElementById('avisoTexto').textContent = texto;
+      const botones = document.getElementById('avisoBotones');
+      botones.innerHTML = '';
+      const no = document.createElement('button');
+      no.type = 'button';
+      no.className = 'btn-secundario';
+      no.textContent = 'Revisar';
+      no.onclick = function() { cerrarAviso(); resolve(false); };
+      const si = document.createElement('button');
+      si.type = 'button';
+      si.className = 'btn-principal';
+      si.textContent = textoSi;
+      si.onclick = function() { cerrarAviso(); resolve(true); };
+      botones.appendChild(no);
+      botones.appendChild(si);
+      document.getElementById('modalAviso').style.display = 'flex';
+    });
+  }
+
+  function pedirTexto(titulo, texto, placeholder, textoSi) {
+    return new Promise(function(resolve) {
+      document.getElementById('avisoTitulo').textContent = titulo;
+      document.getElementById('avisoTexto').textContent = texto;
+      const extra = document.getElementById('avisoExtra');
+      extra.innerHTML = '<textarea id="avisoCampo" rows="3"></textarea>';
+      const campo = document.getElementById('avisoCampo');
+      campo.placeholder = placeholder;
+      const botones = document.getElementById('avisoBotones');
+      botones.innerHTML = '';
+      const no = document.createElement('button');
+      no.type = 'button';
+      no.className = 'btn-secundario';
+      no.textContent = 'Cancelar';
+      no.onclick = function() { cerrarAviso(); resolve(null); };
+      const si = document.createElement('button');
+      si.type = 'button';
+      si.className = 'btn-principal';
+      si.textContent = textoSi;
+      si.onclick = function() {
+        const valor = campo.value.trim();
+        if (!valor) { campo.focus(); campo.style.borderColor = 'var(--rojo)'; return; }
+        cerrarAviso();
+        resolve(valor);
+      };
+      botones.appendChild(no);
+      botones.appendChild(si);
+      document.getElementById('modalAviso').style.display = 'flex';
+      setTimeout(function() { campo.focus(); }, 50);
+    });
+  }
+
+  function cerrarAviso() {
+    document.getElementById('modalAviso').style.display = 'none';
+    document.getElementById('avisoExtra').innerHTML = '';
+  }
+
+  function mensajeErrorEnvio(err) {
+    const codigo = err && err.code ? err.code : '';
+    if (codigo === 'unavailable') return 'No hay conexión a internet. Probá de nuevo cuando tengas señal.';
+    if (codigo === 'permission-denied') return 'El sistema rechazó el envío. Revisá los datos o avisale al administrador.';
+    return 'No se pudo enviar: ' + (err && err.message ? err.message : err);
+  }
+
+  // ---------- Dictado por voz (solo compra normal) ----------
+  function quitarAcentos(str) {
+    return str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  const CAMPOS_VOZ = [
+    { clave: 'eess', patrones: ['estacion', 'eess', 'destino'] },
+    { clave: 'encargado', patrones: ['encargado'] },
+    { clave: 'categoria', patrones: ['categoria'] },
+    { clave: 'producto', patrones: ['producto', 'servicio'], targetId: 'f_producto' },
+    { clave: 'cantidad', patrones: ['cantidad'], targetId: 'f_cantidad' },
+    { clave: 'motivo', patrones: ['motivo', 'justificacion'], targetId: 'f_motivo' },
+    { clave: 'caracteristicas', patrones: ['caracteristicas', 'especificaciones'], targetId: 'f_caracteristicas' }
+  ];
+
+  function interpretarVozFormulario(texto) {
+    const textoNorm = quitarAcentos(texto.toLowerCase());
+    const encontrados = [];
+    CAMPOS_VOZ.forEach(campo => {
+      campo.patrones.forEach(patron => {
+        const idx = textoNorm.indexOf(patron);
+        if (idx !== -1) {
+          encontrados.push({ campo: campo, idx: idx, len: patron.length });
+        }
+      });
+    });
+    encontrados.sort((a, b) => a.idx - b.idx);
+
+    const vistos = new Set();
+    const unicos = encontrados.filter(e => {
+      if (vistos.has(e.campo.clave)) return false;
+      vistos.add(e.campo.clave);
+      return true;
+    });
+
+    const resultados = {};
+    unicos.forEach((e, i) => {
+      const inicioValor = e.idx + e.len;
+      const finValor = i + 1 < unicos.length ? unicos[i + 1].idx : texto.length;
+      let valor = texto.substring(inicioValor, finValor);
+      valor = valor.replace(/^[\s:,.-]+|[\s:,.-]+$/g, '');
+      resultados[e.campo.clave] = valor;
+    });
+    return resultados;
+  }
+
+  // Elige en un desplegable la opción que más se parece a lo dictado.
+  // Equivalencias para el dictado. En vez de una lista fija de estaciones, la app
+  // toma los nombres que estén cargados en Firebase y los compara con lo que se
+  // dijo, expandiendo las abreviaturas. Así, si mañana se renombra una estación,
+  // el dictado la sigue reconociendo sin tocar este archivo.
+  const ALIAS_VOZ = {
+    axion: ['accion', 'action', 'axion'],
+    lg: ['ele ge', 'elege', 'el ge'],
+    jun: ['junin', 'junin de los andes'],
+    plo: ['plottier', 'plotier'],
+    nqn: ['neuquen', 'neuquen capital'],
+    bas: ['bastias', 'bastia'],
+    stfe: ['santa fe', 'santafe'],
+    stfe: ['santa fe', 'santafe'],
+    triangulos: ['triangulo']
+  };
+
+  function normalizarVoz(texto) {
+    return quitarAcentos(String(texto).toLowerCase())
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Cada palabra del nombre de la estación suma un punto si aparece en lo dicho,
+  // ya sea tal cual o por alguna de sus formas habladas. Gana la que más puntos
+  // junta, y si hay empate no se elige ninguna, para no adivinar mal.
+  function seleccionarEstacionPorVoz(texto) {
+    const dicho = ' ' + normalizarVoz(texto) + ' ';
+    const sel = document.getElementById('f_eess');
+    let mejor = null, mejorPuntaje = 0, empate = false;
+
+    Array.from(sel.options).forEach(function(op) {
+      if (!op.value) return;
+      const palabras = normalizarVoz(op.value).split(' ').filter(p => p.length > 1);
+      let puntaje = 0;
+      palabras.forEach(function(p) {
+        const formas = [p].concat(ALIAS_VOZ[p] || []);
+        if (formas.some(f => dicho.indexOf(' ' + f + ' ') !== -1)) puntaje++;
+      });
+      if (puntaje > mejorPuntaje) { mejor = op.value; mejorPuntaje = puntaje; empate = false; }
+      else if (puntaje === mejorPuntaje && puntaje > 0) { empate = true; }
+    });
+
+    if (mejor && !empate) { sel.value = mejor; return true; }
+    return false;
+  }
+
+  function seleccionarPorTexto(selectId, texto) {
+    const buscado = quitarAcentos(String(texto).toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').trim();
+    if (!buscado) return;
+    const palabras = buscado.split(/\s+/).filter(p => p.length > 1);
+    const sel = document.getElementById(selectId);
+    let mejor = null, mejorPuntaje = 0;
+    Array.from(sel.options).forEach(function(op) {
+      if (!op.value) return;
+      const opNorm = quitarAcentos(op.value.toLowerCase()).replace(/[^a-z0-9 ]/g, ' ');
+      const puntaje = palabras.filter(p => opNorm.indexOf(p) !== -1).length;
+      if (puntaje > mejorPuntaje) { mejor = op.value; mejorPuntaje = puntaje; }
+    });
+    if (mejor) sel.value = mejor;
+  }
+
+  function aplicarDictado(resultados) {
+    CAMPOS_VOZ.forEach(campo => {
+      if (campo.targetId && resultados[campo.clave]) {
+        document.getElementById(campo.targetId).value = resultados[campo.clave];
+      }
+    });
+
+    if (resultados.eess) {
+      if (!seleccionarEstacionPorVoz(resultados.eess)) {
+        seleccionarPorTexto('f_eess', resultados.eess);
+      }
+      actualizarEncargado('f');
+    }
+
+    if (resultados.cantidad) {
+      const numero = resultados.cantidad.match(/\d+/);
+      if (numero) document.getElementById('f_cantidad').value = numero[0];
+    }
+
+    if (resultados.categoria) {
+      const catTexto = quitarAcentos(resultados.categoria.toLowerCase());
+      const opciones = [
+        { valor: 'Computación', match: 'computac' },
+        { valor: 'Imagen', match: 'imagen' },
+        { valor: 'Librería', match: 'libreri' },
+        { valor: 'Limpieza', match: 'limpieza' },
+        { valor: 'Obras', match: 'obras' },
+        { valor: 'Papelería', match: 'papeleri' },
+        { valor: 'Ropa', match: 'ropa' },
+        { valor: 'Varios', match: 'varios' }
+      ];
+      const encontrada = opciones.find(o => catTexto.includes(o.match));
+      if (encontrada) {
+        const radio = document.querySelector('input[name="f_categoria"][value="' + encontrada.valor + '"]');
+        if (radio) radio.checked = true;
+      }
+    }
+  }
+
+  let reconocimientoVoz = null;
+
+  function iniciarDictado() {
+    const btn = document.getElementById('btnDictar');
+    const estado = document.getElementById('dictadoEstado');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      estado.textContent = 'El dictado por voz solo funciona en Chrome.';
+      estado.className = 'msg error';
+      return;
+    }
+
+    if (reconocimientoVoz) {
+      reconocimientoVoz.stop();
+      return;
+    }
+
+    reconocimientoVoz = new SpeechRecognition();
+    reconocimientoVoz.lang = 'es-AR';
+    reconocimientoVoz.continuous = false;
+    reconocimientoVoz.interimResults = false;
+
+    btn.classList.add('grabando');
+    estado.textContent = 'Escuchando... decí, por ejemplo: "estación Auca Rincón, categoría limpieza, producto detergente, cantidad 200, motivo reposición de stock"';
+    estado.className = 'msg';
+
+    reconocimientoVoz.onresult = function(event) {
+      const texto = event.results[0][0].transcript;
+      const resultados = interpretarVozFormulario(texto);
+      aplicarDictado(resultados);
+      estado.textContent = 'Se completó lo reconocido: "' + texto + '". Revisá los datos antes de generar.';
+      estado.className = 'msg ok';
+    };
+
+    reconocimientoVoz.onerror = function(event) {
+      estado.textContent = 'No se pudo escuchar: ' + event.error;
+      estado.className = 'msg error';
+    };
+
+    reconocimientoVoz.onend = function() {
+      btn.classList.remove('grabando');
+      reconocimientoVoz = null;
+    };
+
+    reconocimientoVoz.start();
+  }
+
+  // ---------- Guardado local en el celular (IndexedDB) ----------
+  // Guarda los borradores pendientes de firma y el historial de lo enviado desde este celular.
+  // Las dos direcciones son el mismo sitio para el navegador, así que comparten IndexedDB.
+  // Por eso el entorno de prueba usa una base con otro nombre: su historial no se mezcla con el real.
+  const DB_NOMBRE = ES_PRUEBA ? 'oc_solicitudes_db_test' : 'oc_solicitudes_db';
+  const DB_STORE = 'solicitudes';
+  const cacheSolicitudes = new Map();
+  let dbPromesa = null;
+
+  function abrirDB() {
+    if (dbPromesa) return dbPromesa;
+    dbPromesa = new Promise(function(resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('Este navegador no permite guardar datos. Usá Chrome.'));
+        return;
+      }
+      const req = indexedDB.open(DB_NOMBRE, 1);
+      req.onupgradeneeded = function() {
+        const base = req.result;
+        if (!base.objectStoreNames.contains(DB_STORE)) {
+          base.createObjectStore(DB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    }).catch(function(err) {
+      dbPromesa = null;
+      throw err;
+    });
+    return dbPromesa;
+  }
+
+  function obtenerLocales() {
+    return abrirDB().then(function(base) {
+      return new Promise(function(resolve, reject) {
+        const req = base.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { reject(req.error); };
+      });
+    });
+  }
+
+  function guardarLocal(s) {
+    return abrirDB().then(function(base) {
+      return new Promise(function(resolve, reject) {
+        let tx;
+        try {
+          tx = base.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put(s);
+        } catch (e) {
+          reject(e);
+          return;
+        }
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(tx.error); };
+        tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
+      });
+    });
+  }
+
+  function porFechaCreacion(a, b) {
+    return String(a.creada || '').localeCompare(String(b.creada || ''));
+  }
+
+  function esDelUsuarioActual(s) {
+    return !!usuarioActual && s.creadoPor === usuarioActual.email && !!s.tipo;
+  }
+
+  // ---------- Compra normal ----------
+  function guardarSolicitud(event) {
+    event.preventDefault();
+    guardarSolicitudAsync();
+    return false;
+  }
+
+  async function guardarSolicitudAsync() {
+    const msg = document.getElementById('f_msg');
+    const btn = document.querySelector('#formSolicitud button[type="submit"]');
+    const categoriaEl = document.querySelector('input[name="f_categoria"]:checked');
+
+    if (!categoriaEl) {
+      msg.textContent = 'Elegí una categoría';
+      msg.className = 'msg error';
+      return;
+    }
+
+    const solicitud = {
+      id: generarId('oc'),
+      tipo: 'normal',
+      eess: document.getElementById('f_eess').value,
+      encargado: encargadoDeEstacion(document.getElementById('f_eess').value),
+      fecha: document.getElementById('f_fecha').value,
+      categoria: categoriaEl.value,
+      producto: document.getElementById('f_producto').value.trim(),
+      cantidad: Number(document.getElementById('f_cantidad').value),
+      fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
+      motivo: document.getElementById('f_motivo').value.trim(),
+      caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
+      estadoLocal: 'pendiente_firma',
+      creada: new Date().toISOString(),
+      creadoPor: usuarioActual ? usuarioActual.email : ''
+    };
+
+    btn.disabled = true;
+    try {
+      await guardarLocal(solicitud);
+      document.getElementById('formSolicitud').reset();
+      document.getElementById('dictadoEstado').textContent = '';
+      actualizarEncargado('f');
+      ponerFechasDeHoy();
+      msg.textContent = 'Solicitud generada. Firmala desde "Generadas" para enviarla a Compras.';
+      msg.className = 'msg ok';
+      await renderGeneradas();
+    } catch (err) {
+      msg.textContent = 'No se pudo guardar la solicitud: ' + (err && err.message ? err.message : err);
+      msg.className = 'msg error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---------- Compra de urgencia ----------
+  function validarImporte() {
+    const valor = Number(document.getElementById('u_importe').value);
+    const excede = valor >= LIMITE_URGENCIA;
+    document.getElementById('u_avisoImporte').style.display = excede ? 'block' : 'none';
+    document.getElementById('btnInformar').disabled = excede;
+    return !excede;
+  }
+
+  function informarUrgencia(event) {
+    event.preventDefault();
+    informarUrgenciaAsync();
+    return false;
+  }
+
+  async function informarUrgenciaAsync() {
+    const msg = document.getElementById('u_msg');
+    const btn = document.getElementById('btnInformar');
+    const importe = Number(document.getElementById('u_importe').value);
+
+    if (!(importe > 0)) {
+      msg.textContent = 'Ingresá el importe de la compra.';
+      msg.className = 'msg error';
+      return;
+    }
+    if (!validarImporte()) return;
+
+    const urgencia = {
+      id: generarId('ur'),
+      tipo: 'urgencia',
+      eess: document.getElementById('u_eess').value,
+      encargado: encargadoDeEstacion(document.getElementById('u_eess').value),
+      fechaCompra: document.getElementById('u_fecha').value,
+      detalle: document.getElementById('u_detalle').value.trim(),
+      motivo: document.getElementById('u_motivo').value.trim(),
+      importe: importe,
+      proveedor: document.getElementById('u_proveedor').value.trim(),
+      comprobante: document.getElementById('u_comprobante').value.trim(),
+      creada: new Date().toISOString(),
+      creadoPor: usuarioActual ? usuarioActual.email : ''
+    };
+
+    const ok = await pedirConfirmacion('Confirmá la compra',
+      urgencia.eess + ' · ' + urgencia.encargado + '\n' +
+      urgencia.detalle + '\n' +
+      'Importe: ' + formatoPesos(urgencia.importe) + '\n' +
+      'Proveedor: ' + urgencia.proveedor,
+      'Informar');
+    if (!ok) return;
+
+    btn.disabled = true;
+    msg.textContent = 'Enviando a Compras... no cierres la app.';
+    msg.className = 'msg';
+
+    try {
+      await db.collection('urgencias').doc(urgencia.id).set({
+        tipo: 'urgencia',
+        eess: urgencia.eess,
+        encargado: urgencia.encargado,
+        fechaCompra: urgencia.fechaCompra,
+        detalle: urgencia.detalle,
+        motivo: urgencia.motivo,
+        importe: urgencia.importe,
+        proveedor: urgencia.proveedor,
+        comprobante: urgencia.comprobante,
+        estado: 'informada',
+        creada: urgencia.creada,
+        enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        creadoPor: urgencia.creadoPor
+      });
+    } catch (err) {
+      msg.textContent = mensajeErrorEnvio(err);
+      msg.className = 'msg error';
+      btn.disabled = false;
+      return;
+    }
+
+    urgencia.estadoLocal = 'enviada';
+    urgencia.enviadaLocal = new Date().toISOString();
+    try { await guardarLocal(urgencia); } catch (e) { /* el envío ya se hizo; el historial local es secundario */ }
+
+    document.getElementById('formUrgencia').reset();
+    actualizarEncargado('u');
+    ponerFechasDeHoy();
+    validarImporte();
+    msg.textContent = '';
+    btn.disabled = false;
+    await renderHistorial();
+    iniciarSeguimientoHistorial();
+    await mostrarAviso('Compra informada', 'Compras ya recibió la compra de urgencia. Queda registrada en tu Historial.');
+  }
+
+  // ---------- Listados ----------
+  async function renderGeneradas() {
+    let lista;
+    try {
+      lista = await obtenerLocales();
+    } catch (err) {
+      mostrarMensaje('No se pudieron leer las solicitudes guardadas: ' + (err && err.message ? err.message : err), true);
+      return;
+    }
+    lista = lista.filter(s => s.tipo === 'normal' && s.estadoLocal === 'pendiente_firma' && esDelUsuarioActual(s))
+      .sort(porFechaCreacion).reverse();
+    const cont = document.getElementById('listaGeneradas');
+    const vacio = document.getElementById('generadasVacio');
+    cont.innerHTML = '';
+    vacio.style.display = lista.length ? 'none' : 'block';
+
+    lista.forEach(s => {
+      cacheSolicitudes.set(s.id, s);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        '<div class="card-top">' +
+          '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
+          '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
+        '</div>' +
+        '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
+        '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + '</div>' +
+        '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
+        '<button class="btn-generar-pdf" onclick="abrirFirma(\'' + s.id + '\')">Firmar y enviar a Compras</button>';
+      cont.appendChild(card);
+    });
+  }
+
+  async function renderHistorial() {
+    let lista;
+    try {
+      lista = await obtenerLocales();
+    } catch (err) {
+      mostrarMensaje('No se pudo leer el historial: ' + (err && err.message ? err.message : err), true);
+      return;
+    }
+    lista = lista.filter(s => s.estadoLocal === 'enviada' && esDelUsuarioActual(s)).sort(porFechaCreacion).reverse();
+    const cont = document.getElementById('listaHistorial');
+    const vacio = document.getElementById('historialVacio');
+    cont.innerHTML = '';
+    vacio.style.display = lista.length ? 'none' : 'block';
+
+    lista.forEach(s => {
+      cacheSolicitudes.set(s.id, s);
+      const card = document.createElement('div');
+      card.className = 'card';
+      const estado = estadoActualLocal(s);
+      let filaRechazo = '';
+      if (estado === 'rechazada' && s.motivoRechazo) {
+        const quien = s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia';
+        filaRechazo = '<div class="card-row">Rechazada por ' + quien + ': ' + escaparHTML(s.motivoRechazo) + '</div>';
+      }
+      if (s.tipo === 'urgencia') {
+        card.innerHTML =
+          '<div class="card-top">' +
+            '<span class="card-title">' + escaparHTML(s.detalle) + '<span class="badge badge-urgencia">Urgencia</span></span>' +
+            '<span class="card-date">' + fechaCorta(s.fechaCompra) + '</span>' +
+          '</div>' +
+          '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.encargado) + '</div>' +
+          '<div class="card-row">Importe: ' + formatoPesos(s.importe) + '</div>' +
+          '<div class="card-row">Proveedor: ' + escaparHTML(s.proveedor) + ' · Comp. ' + escaparHTML(s.comprobante) + '</div>' +
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>';
+      } else {
+        card.innerHTML =
+          '<div class="card-top">' +
+            '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
+            '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
+          '</div>' +
+          '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
+          '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + '</div>' +
+          '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
+          filaRechazo +
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
+          '<button class="btn-generar-pdf" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
+      }
+      cont.appendChild(card);
+    });
+  }
+
+  // ---------- Seguimiento del estado de lo enviado (Historial del encargado) ----------
+  // Escucha en Firebase las solicitudes enviadas desde ESTE celular y avisa cuando
+  // Compras o Gerencia toman una decisión. La visibilidad no cambia: solo se siguen
+  // los documentos cuyo id ya está guardado localmente.
+  const ESTADOS_CERRADOS = ['finalizada', 'rechazada', 'registrada'];
+  const MAX_SEGUIMIENTO = 25;
+
+  const ESTADOS_ENCARGADO = {
+    pendiente_compras: { texto: 'En Compras', clase: 'chip-accion' },
+    en_gerencia: { texto: 'En Gerencia', clase: 'chip-espera' },
+    aprobada: { texto: 'Aprobada por Gerencia', clase: 'chip-ok' },
+    rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
+    finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    informada: { texto: 'Informada a Compras', clase: 'chip-accion' },
+    registrada: { texto: 'Registrada por Compras', clase: 'chip-fin' }
+  };
+
+  let seguimientoLocal = new Map();
+  let seguimientoUnsubs = [];
+  let snapshotsRecibidos = new Set();
+  let faseInicialHistorial = false;
+
+  function chipEstadoEncargado(estado) {
+    const e = ESTADOS_ENCARGADO[estado] || { texto: estado, clase: '' };
+    return '<span class="chip ' + e.clase + '">' + escaparHTML(e.texto) + '</span>';
+  }
+
+  function estadoBase(s) {
+    return s.tipo === 'urgencia' ? 'informada' : 'pendiente_compras';
+  }
+
+  function estadoActualLocal(s) {
+    return s.estadoRemoto || estadoBase(s);
+  }
+
+  function textoNovedad(s, estado) {
+    const nombre = s.tipo === 'urgencia' ? s.detalle : s.producto;
+    if (estado === 'en_gerencia') return 'Compras presupuestó "' + nombre + '" y pasó a Gerencia';
+    if (estado === 'aprobada') return 'Gerencia aprobó "' + nombre + '"';
+    if (estado === 'finalizada') return 'Ya se realizó la compra de "' + nombre + '"';
+    if (estado === 'registrada') return 'Compras registró tu compra de urgencia "' + nombre + '"';
+    if (estado === 'rechazada') {
+      return (s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia') + ' rechazó "' + nombre + '"';
+    }
+    return 'Cambió el estado de "' + nombre + '"';
+  }
+
+  function contarNovedades() {
+    let n = 0;
+    seguimientoLocal.forEach(function(s) {
+      if (s.estadoRemoto && s.vistoEstado && s.estadoRemoto !== s.vistoEstado) n++;
+    });
+    return n;
+  }
+
+  function actualizarBadgeHistorial() {
+    ponerBadge('badgeHistorial', contarNovedades());
+  }
+
+  function marcarHistorialVisto() {
+    const guardados = [];
+    seguimientoLocal.forEach(function(s) {
+      if (s.estadoRemoto && s.vistoEstado !== s.estadoRemoto) {
+        s.vistoEstado = s.estadoRemoto;
+        guardados.push(guardarLocal(s).catch(function() {}));
+      }
+    });
+    actualizarBadgeHistorial();
+    return Promise.all(guardados);
+  }
+
+  function detenerSeguimientoHistorial() {
+    seguimientoUnsubs.forEach(function(f) { try { f(); } catch (e) {} });
+    seguimientoUnsubs = [];
+    seguimientoLocal = new Map();
+    snapshotsRecibidos = new Set();
+    faseInicialHistorial = false;
+    ponerBadge('badgeHistorial', 0);
+  }
+
+  async function iniciarSeguimientoHistorial() {
+    detenerSeguimientoHistorial();
+    if (!usuarioActual || usuarioActual.rol !== 'encargado') return;
+
+    let locales;
+    try {
+      locales = await obtenerLocales();
+    } catch (e) {
+      return;
+    }
+
+    const enviadas = locales
+      .filter(function(s) { return s.estadoLocal === 'enviada' && esDelUsuarioActual(s); })
+      .sort(porFechaCreacion).reverse();
+    enviadas.forEach(function(s) { seguimientoLocal.set(s.id, s); });
+    actualizarBadgeHistorial();
+
+    const abiertas = enviadas.filter(function(s) {
+      return ESTADOS_CERRADOS.indexOf(estadoActualLocal(s)) === -1;
+    }).slice(0, MAX_SEGUIMIENTO);
+    if (!abiertas.length) return;
+
+    faseInicialHistorial = true;
+    setTimeout(function() {
+      if (!faseInicialHistorial) return;
+      faseInicialHistorial = false;
+      const n = contarNovedades();
+      if (n > 0 && tabActual !== 'historial') {
+        mostrarToast(n === 1 ? 'Tenés una novedad en el Historial' : 'Tenés ' + n + ' novedades en el Historial');
+      }
+    }, 2500);
+
+    abiertas.forEach(function(s) {
+      const coleccion = s.tipo === 'urgencia' ? 'urgencias' : 'solicitudes';
+      const unsub = db.collection(coleccion).doc(s.id).onSnapshot(function(snap) {
+        aplicarCambioRemoto(s.id, snap);
+      }, function() { /* si no se puede leer, el historial sigue mostrando lo local */ });
+      seguimientoUnsubs.push(unsub);
+    });
+  }
+
+  async function aplicarCambioRemoto(id, snap) {
+    const s = seguimientoLocal.get(id);
+    const primera = !snapshotsRecibidos.has(id);
+    snapshotsRecibidos.add(id);
+    if (!s || !snap.exists) return;
+
+    const datos = snap.data() || {};
+    const anterior = estadoActualLocal(s);
+    const nuevo = datos.estado || anterior;
+
+    if (!s.vistoEstado) s.vistoEstado = estadoBase(s);
+    s.estadoRemoto = nuevo;
+    s.motivoRechazo = datos.motivoRechazo || '';
+    s.rechazadaPor = datos.rechazadaPor || '';
+
+    const cambio = nuevo !== anterior;
+    if (cambio && !(primera && faseInicialHistorial)) {
+      mostrarToast(textoNovedad(s, nuevo));
+    }
+    if (tabActual === 'historial') s.vistoEstado = nuevo;
+
+    try { await guardarLocal(s); } catch (e) { /* el estado se vuelve a leer al reabrir */ }
+    actualizarBadgeHistorial();
+    if (cambio && tabActual === 'historial') await renderHistorial();
+  }
+
+  // ---------- PDF ----------
+  function generarPDFOrden(solicitud) {
+    const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFCtor) {
+      throw new Error('No se pudo cargar la librería de PDF (revisá tu conexión a internet)');
+    }
+    const doc = new jsPDFCtor();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.text('ORDEN DE COMPRA', 105, y, { align: 'center' });
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text('N.° ' + solicitud.id, 105, y, { align: 'center' });
+    y += 14;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+
+    function linea(etiqueta, valor) {
+      doc.setFont(undefined, 'bold');
+      const textoEtiqueta = etiqueta + ':';
+      doc.text(textoEtiqueta, 15, y);
+      const anchoEtiqueta = doc.getTextWidth(textoEtiqueta);
+      doc.setFont(undefined, 'normal');
+      const xValor = 15 + anchoEtiqueta + 4;
+      const anchoDisponible = 195 - xValor;
+      const texto = doc.splitTextToSize(String(valor || '-'), anchoDisponible);
+      doc.text(texto, xValor, y);
+      y += 7 * texto.length;
+    }
+
+    linea('EESS / Destino', solicitud.eess);
+    linea('Encargado', solicitud.encargado);
+    linea('Fecha', fechaCorta(solicitud.fecha));
+    linea('Categoría', solicitud.categoria);
+    linea('Producto / Servicio', solicitud.producto);
+    linea('Cantidad', String(solicitud.cantidad));
+    linea('Fecha en que se necesita', fechaCorta(solicitud.fechaNecesaria));
+    linea('Motivo / Justificación', solicitud.motivo);
+    linea('Características', solicitud.caracteristicas || '-');
+
+    const presus = solicitud.presupuestos || [];
+    if (presus.length) {
+      y += 4;
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFont(undefined, 'bold');
+      doc.text('Presupuestos:', 15, y);
+      y += 7;
+      doc.setFont(undefined, 'normal');
+      presus.forEach(function(p, i) {
+        if (y > 275) { doc.addPage(); y = 20; }
+        const elegido = solicitud.presupuestoElegido === i && (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada');
+        const txt = (i + 1) + '. ' + p.proveedor + ' — ' + formatoPesos(p.monto) +
+          (p.observaciones ? ' (' + p.observaciones + ')' : '') + (elegido ? '   [APROBADO]' : '');
+        const lineas = doc.splitTextToSize(txt, 175);
+        doc.text(lineas, 20, y);
+        y += 6 * lineas.length;
+      });
+    }
+
+    if (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada') {
+      y += 2;
+      linea('Resolución de Gerencia', 'Aprobada' + (solicitud.resueltaEn ? ' el ' + fechaDeTimestamp(solicitud.resueltaEn) : ''));
+    }
+    if (solicitud.estado === 'rechazada') {
+      y += 2;
+      linea(solicitud.rechazadaPor === 'compras' ? 'Rechazada por Compras' : 'Resolución de Gerencia',
+        (solicitud.rechazadaPor === 'compras' ? '' : 'Rechazada — ') + (solicitud.motivoRechazo || ''));
+    }
+    if (solicitud.estado === 'finalizada') {
+      linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''));
+    }
+
+    y += 6;
+
+    if (solicitud.firma) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      y += 4;
+      doc.setFont(undefined, 'bold');
+      doc.text('Firma del Encargado:', 15, y);
+      y += 4;
+      try {
+        doc.addImage(solicitud.firma, 'PNG', 15, y, 70, 30);
+      } catch (e) {
+        // si la firma falla, seguimos sin bloquear el resto del PDF
+      }
+      y += 30;
+      doc.setDrawColor(150, 150, 150);
+      doc.line(15, y, 85, y);
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(solicitud.encargado || '', 15, y + 5);
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'normal');
+    }
+
+    doc.save('orden-de-compra-' + solicitud.id + '.pdf');
+  }
+
+  // ---------- Firma ----------
+  let firmaCtx = null;
+  let firmaDibujando = false;
+  let firmaTieneTrazo = false;
+  let idPendienteFirma = null;
+
+  function abrirFirma(id) {
+    idPendienteFirma = id;
+    const canvas = document.getElementById('canvasFirma');
+    firmaCtx = canvas.getContext('2d');
+    firmaCtx.fillStyle = '#ffffff';
+    firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+    firmaCtx.strokeStyle = '#000000';
+    firmaCtx.lineWidth = 3;
+    firmaCtx.lineCap = 'round';
+    firmaCtx.lineJoin = 'round';
+    firmaTieneTrazo = false;
+    document.getElementById('modalFirma').style.display = 'flex';
+  }
+
+  function cerrarFirma() {
+    document.getElementById('modalFirma').style.display = 'none';
+    idPendienteFirma = null;
+  }
+
+  function limpiarFirma() {
+    const canvas = document.getElementById('canvasFirma');
+    firmaCtx.fillStyle = '#ffffff';
+    firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+    firmaTieneTrazo = false;
+  }
+
+  function posicionFirma(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    const escalaX = canvas.width / rect.width;
+    const escalaY = canvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * escalaX,
+      y: (evt.clientY - rect.top) * escalaY
+    };
+  }
+
+  function firmaInicio(evt) {
+    evt.preventDefault();
+    const canvas = document.getElementById('canvasFirma');
+    try { canvas.setPointerCapture(evt.pointerId); } catch (e) {}
+    const pos = posicionFirma(canvas, evt);
+    firmaDibujando = true;
+    firmaTieneTrazo = true;
+    firmaCtx.beginPath();
+    firmaCtx.moveTo(pos.x, pos.y);
+  }
+
+  function firmaMover(evt) {
+    if (!firmaDibujando) return;
+    evt.preventDefault();
+    const canvas = document.getElementById('canvasFirma');
+    const pos = posicionFirma(canvas, evt);
+    firmaCtx.lineTo(pos.x, pos.y);
+    firmaCtx.stroke();
+  }
+
+  function firmaFin(evt) {
+    firmaDibujando = false;
+  }
+
+  function confirmarFirma() {
+    if (!firmaTieneTrazo) {
+      alert('Necesitás firmar antes de continuar.');
+      return;
+    }
+    const canvas = document.getElementById('canvasFirma');
+    const firmaDataUrl = canvas.toDataURL('image/png');
+    const id = idPendienteFirma;
+    document.getElementById('modalFirma').style.display = 'none';
+    idPendienteFirma = null;
+    procesarEnvioConFirma(id, firmaDataUrl);
+  }
+
+  async function procesarEnvioConFirma(id, firmaDataUrl) {
+    const solicitud = cacheSolicitudes.get(id);
+    if (!solicitud) {
+      alert('No se encontró la solicitud. Cerrá y volvé a abrir la app.');
+      return;
+    }
+
+    solicitud.firma = firmaDataUrl;
+
+    // El PDF se genera primero, en el mismo toque del usuario, para que la descarga no se bloquee.
+    try {
+      generarPDFOrden(solicitud);
+    } catch (err) {
+      solicitud.firma = null;
+      alert('No se pudo generar el PDF: ' + err.message);
+      return;
+    }
+
+    const botones = document.querySelectorAll('#listaGeneradas .btn-generar-pdf');
+    botones.forEach(b => { b.disabled = true; });
+
+    try {
+      await db.collection('solicitudes').doc(solicitud.id).set({
+        tipo: 'normal',
+        eess: solicitud.eess,
+        encargado: solicitud.encargado,
+        fecha: solicitud.fecha,
+        categoria: solicitud.categoria,
+        producto: solicitud.producto,
+        cantidad: solicitud.cantidad,
+        fechaNecesaria: solicitud.fechaNecesaria,
+        motivo: solicitud.motivo,
+        caracteristicas: solicitud.caracteristicas,
+        firma: solicitud.firma,
+        estado: 'pendiente_compras',
+        creada: solicitud.creada,
+        enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        creadoPor: solicitud.creadoPor
+      });
+    } catch (err) {
+      solicitud.firma = null;
+      botones.forEach(b => { b.disabled = false; });
+      await mostrarAviso('No se envió a Compras',
+        'El PDF se descargó, pero la solicitud no llegó a Compras.\n' + mensajeErrorEnvio(err) +
+        '\nQueda en "Generadas" para que la vuelvas a firmar y enviar.');
+      return;
+    }
+
+    solicitud.estadoLocal = 'enviada';
+    solicitud.enviadaLocal = new Date().toISOString();
+    try { await guardarLocal(solicitud); } catch (e) { /* el envío ya se hizo */ }
+
+    await renderGeneradas();
+    await renderHistorial();
+    iniciarSeguimientoHistorial();
+    await mostrarAviso('Enviada a Compras', 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
+  }
+
+  function descargarPDFDeNuevo(id) {
+    const solicitud = cacheSolicitudes.get(id);
+    if (!solicitud) return;
+    try {
+      generarPDFOrden(solicitud);
+    } catch (err) {
+      alert('No se pudo generar el PDF: ' + err.message);
+    }
+  }
+
+  // =====================================================================
+  // ---------- Paneles de Compras y Gerencia ----------
+  // =====================================================================
+  const ESTADOS = {
+    pendiente_compras: { texto: 'Pendiente de presupuesto', clase: 'chip-accion' },
+    en_gerencia: { texto: 'En revisión de Gerencia', clase: 'chip-espera' },
+    aprobada: { texto: 'Aprobada · realizar compra', clase: 'chip-ok' },
+    rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
+    finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    informada: { texto: 'Sin registrar', clase: 'chip-accion' },
+    registrada: { texto: 'Registrada', clase: 'chip-fin' }
+  };
+
+  let desuscribir = [];
+  let datosSolicitudes = [];
+  let datosUrgencias = [];
+  let estadosPrevios = null;
+  let urgenciasPrevias = null;
+  let idDetalleAbierto = null;
+
+  function chipEstado(estado) {
+    const e = ESTADOS[estado] || { texto: estado, clase: '' };
+    return '<span class="chip ' + e.clase + '">' + escaparHTML(e.texto) + '</span>';
+  }
+
+  function fechaDeTimestamp(ts) {
+    if (!ts) return '';
+    if (typeof ts.toDate === 'function') {
+      const d = ts.toDate();
+      return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+    }
+    return fechaCorta(ts);
+  }
+
+  function porCreadaDesc(a, b) {
+    return String(b.creada || '').localeCompare(String(a.creada || ''));
+  }
+
+  function mostrarToast(texto, esError) {
+    const t = document.getElementById('toast');
+    t.textContent = texto;
+    t.className = 'toast visible' + (esError ? ' error' : '');
+    clearTimeout(mostrarToast._timer);
+    mostrarToast._timer = setTimeout(function() { t.className = 'toast'; }, esError ? 6000 : 4000);
+  }
+
+  function prepararPanel(rol) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    mostrarNav(rol);
+    mostrarTab(TAB_INICIAL[rol]);
+    datosSolicitudes = [];
+    datosUrgencias = [];
+    estadosPrevios = null;
+    urgenciasPrevias = null;
+    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial'].forEach(function(id) {
+      document.getElementById(id).innerHTML = '<p class="placeholder">Cargando...</p>';
+    });
+  }
+
+  function entrarComoCompras() {
+    prepararPanel('compras');
+    escucharSolicitudes();
+    escucharUrgencias();
+  }
+
+  function entrarComoGerencia() {
+    prepararPanel('gerencia');
+    escucharSolicitudes();
+  }
+
+  function detenerEscuchas() {
+    desuscribir.forEach(function(f) { try { f(); } catch (e) {} });
+    desuscribir = [];
+  }
+
+  function errorDeEscucha(err) {
+    mostrarToast('No se pudieron cargar los datos: ' + mensajeErrorEnvio(err), true);
+  }
+
+  function escucharSolicitudes() {
+    const unsub = db.collection('solicitudes').onSnapshot(function(snap) {
+      datosSolicitudes = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      avisarCambiosSolicitudes();
+      renderPanel();
+    }, errorDeEscucha);
+    desuscribir.push(unsub);
+  }
+
+  function escucharUrgencias() {
+    const unsub = db.collection('urgencias').onSnapshot(function(snap) {
+      datosUrgencias = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      avisarCambiosUrgencias();
+      renderPanel();
+    }, errorDeEscucha);
+    desuscribir.push(unsub);
+  }
+
+  // Notificaciones dentro de la app: avisa lo que llega mientras la app está abierta.
+  function avisarCambiosSolicitudes() {
+    const actuales = {};
+    datosSolicitudes.forEach(function(s) { actuales[s.id] = s.estado; });
+    if (estadosPrevios) {
+      datosSolicitudes.forEach(function(s) {
+        if (estadosPrevios[s.id] === s.estado) return;
+        if (usuarioActual.rol === 'compras') {
+          if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'rechazada' && s.rechazadaPor !== 'compras') mostrarToast('Gerencia rechazó: ' + s.producto + ' (' + s.eess + ')');
+        }
+        if (usuarioActual.rol === 'gerencia' && s.estado === 'en_gerencia') {
+          mostrarToast('Nueva orden para aprobar: ' + s.producto + ' (' + s.eess + ')');
+        }
+      });
+    }
+    estadosPrevios = actuales;
+  }
+
+  function avisarCambiosUrgencias() {
+    const actuales = {};
+    datosUrgencias.forEach(function(u) { actuales[u.id] = u.estado; });
+    if (urgenciasPrevias) {
+      datosUrgencias.forEach(function(u) {
+        if (!urgenciasPrevias[u.id]) mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
+      });
+    }
+    urgenciasPrevias = actuales;
+  }
+
+  function ponerBadge(id, cantidad) {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = cantidad > 99 ? '99+' : String(cantidad);
+    b.style.display = cantidad > 0 ? 'flex' : 'none';
+  }
+
+  function tarjetaSolicitud(s) {
+    const n = (s.presupuestos || []).length;
+    return '<div class="card card-click" onclick="abrirDetalle(\'' + s.id + '\')">' +
+      '<div class="card-top">' +
+        '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
+        '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
+      '</div>' +
+      '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
+      '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + (n ? ' · Presupuestos: ' + n : '') + '</div>' +
+      '<div class="card-pie">' + (s.estado === 'rechazada' && s.rechazadaPor === 'compras'
+        ? '<span class="chip chip-rechazo">Rechazada por Compras</span>'
+        : chipEstado(s.estado)) + '<span class="card-ver">Ver detalle ›</span></div>' +
+    '</div>';
+  }
+
+  function tarjetaUrgencia(u) {
+    return '<div class="card">' +
+      '<div class="card-top">' +
+        '<span class="card-title">' + escaparHTML(u.detalle) + '</span>' +
+        '<span class="card-date">' + fechaCorta(u.fechaCompra) + '</span>' +
+      '</div>' +
+      '<div class="card-row">' + escaparHTML(u.eess) + ' · ' + escaparHTML(u.encargado) + '</div>' +
+      '<div class="card-row"><b>' + formatoPesos(u.importe) + '</b> · ' + escaparHTML(u.proveedor) + '</div>' +
+      '<div class="card-row">Comprobante: ' + escaparHTML(u.comprobante) + '</div>' +
+      '<div class="card-row card-motivo">Motivo: ' + escaparHTML(u.motivo) + '</div>' +
+      '<div class="card-pie">' + chipEstado(u.estado) + '</div>' +
+      (u.estado === 'informada'
+        ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
+        : '') +
+    '</div>';
+  }
+
+  function llenarLista(id, items, fnTarjeta, textoVacio) {
+    const cont = document.getElementById(id);
+    cont.innerHTML = items.length
+      ? items.map(fnTarjeta).join('')
+      : '<p class="placeholder">' + escaparHTML(textoVacio) + '</p>';
+  }
+
+  function renderPanel() {
+    if (!usuarioActual) return;
+    const rol = usuarioActual.rol;
+    const todas = datosSolicitudes.slice().sort(porCreadaDesc);
+
+    if (rol === 'compras') {
+      const requierenAccion = todas.filter(s => s.estado === 'pendiente_compras' || s.estado === 'aprobada');
+      const enEspera = todas.filter(s => s.estado === 'en_gerencia');
+      const cerradas = todas.filter(s => s.estado === 'finalizada' || s.estado === 'rechazada');
+      llenarLista('listaCSolicitudes', requierenAccion.concat(enEspera), tarjetaSolicitud, 'No hay solicitudes en curso.');
+      llenarLista('listaCHistorial', cerradas, tarjetaSolicitud, 'Todavía no hay órdenes cerradas.');
+      ponerBadge('badgeCSolicitudes', requierenAccion.length);
+
+      const urg = datosUrgencias.slice().sort(porCreadaDesc);
+      const sinRegistrar = urg.filter(u => u.estado === 'informada');
+      const registradas = urg.filter(u => u.estado !== 'informada');
+      llenarLista('listaCUrgencias', sinRegistrar.concat(registradas), tarjetaUrgencia, 'No hay compras de urgencia informadas.');
+      ponerBadge('badgeCUrgencias', sinRegistrar.length);
+    }
+
+    if (rol === 'gerencia') {
+      const porAprobar = todas.filter(s => s.estado === 'en_gerencia');
+      const resueltas = todas.filter(s => ['aprobada', 'rechazada', 'finalizada'].indexOf(s.estado) !== -1);
+      llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
+      llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no hay órdenes resueltas.');
+      ponerBadge('badgeGPorAprobar', porAprobar.length);
+    }
+
+    if (idDetalleAbierto) renderDetalle();
+  }
+
+  // ---------- Detalle de una orden ----------
+  function abrirDetalle(id) {
+    idDetalleAbierto = id;
+    renderDetalle(true);
+    document.getElementById('modalDetalle').style.display = 'flex';
+    document.getElementById('detalleCuerpo').scrollTop = 0;
+  }
+
+  function cerrarDetalle() {
+    idDetalleAbierto = null;
+    document.getElementById('modalDetalle').style.display = 'none';
+  }
+
+  function filaDato(etiqueta, valor) {
+    return '<div class="dato"><span>' + escaparHTML(etiqueta) + '</span><b>' + escaparHTML(valor || '-') + '</b></div>';
+  }
+
+  function renderDetalle(esApertura) {
+    const s = datosSolicitudes.find(x => x.id === idDetalleAbierto);
+    const cuerpo = document.getElementById('detalleCuerpo');
+    if (!s) { cerrarDetalle(); return; }
+
+    // conservar lo que el usuario venía escribiendo si llega una actualización
+    const guardados = {};
+    if (!esApertura) {
+      ['p_proveedor', 'p_monto', 'p_obs', 'd_nota'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) guardados[id] = el.value;
+      });
+    }
+    const radioPrevio = esApertura ? null : document.querySelector('input[name="g_presu"]:checked');
+    const presuMarcado = radioPrevio ? radioPrevio.value : null;
+
+    const rol = usuarioActual.rol;
+    const presupuestos = s.presupuestos || [];
+    let html = '';
+
+    html += '<div class="detalle-cab"><h2>' + escaparHTML(s.producto) + '</h2>' + chipEstado(s.estado) + '</div>';
+
+    html += '<div class="detalle-seccion">' +
+      filaDato('EESS / Destino', s.eess) +
+      filaDato('Encargado', s.encargado) +
+      filaDato('Fecha', fechaCorta(s.fecha)) +
+      filaDato('Categoría', s.categoria) +
+      filaDato('Cantidad', String(s.cantidad)) +
+      filaDato('Se necesita para', fechaCorta(s.fechaNecesaria)) +
+      filaDato('Motivo', s.motivo) +
+      filaDato('Características', s.caracteristicas) +
+    '</div>';
+
+    html += '<button type="button" class="btn-contorno" onclick="descargarPDFPanel(\'' + s.id + '\')">Descargar PDF</button>';
+
+    // Presupuestos
+    const editable = rol === 'compras' && s.estado === 'pendiente_compras';
+    const eligiendo = rol === 'gerencia' && s.estado === 'en_gerencia';
+    html += '<h3 class="detalle-titulo">Presupuestos</h3>';
+    if (!presupuestos.length) {
+      html += '<p class="detalle-nota">' + (editable ? 'Todavía no cargaste presupuestos.' : 'Sin presupuestos cargados.') + '</p>';
+    }
+    presupuestos.forEach(function(p, i) {
+      const elegido = s.presupuestoElegido === i && (s.estado === 'aprobada' || s.estado === 'finalizada');
+      html += '<label class="presu' + (elegido ? ' presu-elegido' : '') + '">' +
+        (eligiendo ? '<input type="radio" name="g_presu" value="' + i + '">' : '') +
+        '<div class="presu-info">' +
+          '<b>' + escaparHTML(p.proveedor) + '</b>' +
+          '<span class="presu-monto">' + formatoPesos(p.monto) + '</span>' +
+          (p.observaciones ? '<span class="presu-obs">' + escaparHTML(p.observaciones) + '</span>' : '') +
+          (elegido ? '<span class="presu-marca">✔ Elegido por Gerencia</span>' : '') +
+        '</div>' +
+        (editable ? '<button type="button" class="presu-quitar" onclick="quitarPresupuesto(event, ' + i + ')" aria-label="Quitar">×</button>' : '') +
+      '</label>';
+    });
+
+    if (editable) {
+      html += '<div class="presu-form">' +
+        '<input type="text" id="p_proveedor" placeholder="Proveedor">' +
+        '<input type="number" id="p_monto" placeholder="Monto total ($)" min="1" step="0.01" inputmode="decimal">' +
+        '<input type="text" id="p_obs" placeholder="Observaciones (opcional)">' +
+        '<button type="button" class="btn-contorno" onclick="agregarPresupuesto(this)">+ Agregar presupuesto</button>' +
+      '</div>';
+      html += '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>';
+      if (!presupuestos.length) html += '<p class="detalle-nota">Cargá al menos un presupuesto para poder enviarla.</p>';
+      html += '<button type="button" class="btn-rechazo btn-rechazo-compras" onclick="rechazarOrden(this)">Rechazar solicitud</button>' +
+        '<p class="detalle-nota">Usalo si la solicitud está duplicada, mal cargada o no corresponde.</p>';
+    }
+
+    // Estado / resolución
+    if (s.estado === 'en_gerencia' && rol === 'compras') {
+      html += '<p class="detalle-info">Esperando la aprobación de Gerencia.</p>';
+    }
+    if (eligiendo) {
+      html += '<p class="detalle-nota">Elegí el presupuesto que aprobás, o rechazá la orden.</p>' +
+        '<div class="botones-fila">' +
+          '<button type="button" class="btn-rechazo" onclick="rechazarOrden(this)">Rechazar</button>' +
+          '<button type="button" class="btn-accion" onclick="aprobarOrden(this)">Aprobar</button>' +
+        '</div>';
+    }
+    if (s.estado === 'rechazada') {
+      html += '<div class="detalle-resolucion rechazo"><b>Rechazada por ' + (s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia') +
+        (s.resueltaEn ? ' el ' + fechaDeTimestamp(s.resueltaEn) : '') + '</b>' +
+        '<span>Motivo: ' + escaparHTML(s.motivoRechazo) + '</span>' +
+        '<span>La orden quedó cerrada. Si hace falta, el encargado tiene que generar una nueva.</span></div>';
+    }
+    if (s.estado === 'aprobada' || s.estado === 'finalizada') {
+      html += '<div class="detalle-resolucion ok"><b>Aprobada por Gerencia' + (s.resueltaEn ? ' el ' + fechaDeTimestamp(s.resueltaEn) : '') + '</b></div>';
+    }
+    if (s.estado === 'aprobada' && rol === 'compras') {
+      html += '<label class="detalle-label">Nota de la compra (opcional)' +
+        '<textarea id="d_nota" rows="2" placeholder="Ej.: factura, fecha de entrega, etc."></textarea></label>' +
+        '<button type="button" class="btn-accion" onclick="finalizarCompra(this)">Marcar compra realizada</button>';
+    }
+    if (s.estado === 'aprobada' && rol === 'gerencia') {
+      html += '<p class="detalle-info">Compras tiene que realizar la compra.</p>';
+    }
+    if (s.estado === 'finalizada') {
+      html += '<div class="detalle-resolucion fin"><b>Compra realizada' + (s.finalizadaEn ? ' el ' + fechaDeTimestamp(s.finalizadaEn) : '') + '</b>' +
+        (s.notaCompra ? '<span>Nota: ' + escaparHTML(s.notaCompra) + '</span>' : '') + '</div>';
+    }
+
+    cuerpo.innerHTML = html;
+    Object.keys(guardados).forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.value = guardados[id];
+    });
+    if (presuMarcado !== null) {
+      const r = document.querySelector('input[name="g_presu"][value="' + presuMarcado + '"]');
+      if (r) r.checked = true;
+    }
+  }
+
+  function solicitudAbierta() {
+    return datosSolicitudes.find(x => x.id === idDetalleAbierto);
+  }
+
+  async function actualizarSolicitud(id, cambios, boton) {
+    if (boton) boton.disabled = true;
+    try {
+      await db.collection('solicitudes').doc(id).update(cambios);
+      return true;
+    } catch (err) {
+      mostrarToast(mensajeErrorEnvio(err), true);
+      if (boton) boton.disabled = false;
+      return false;
+    }
+  }
+
+  async function agregarPresupuesto(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const proveedor = document.getElementById('p_proveedor').value.trim();
+    const monto = Number(document.getElementById('p_monto').value);
+    const observaciones = document.getElementById('p_obs').value.trim();
+    if (!proveedor || !(monto > 0)) {
+      mostrarToast('Completá el proveedor y el monto del presupuesto.', true);
+      return;
+    }
+    const nuevos = (s.presupuestos || []).concat([{ proveedor: proveedor, monto: monto, observaciones: observaciones }]);
+    const ok = await actualizarSolicitud(s.id, { presupuestos: nuevos }, boton);
+    if (ok) {
+      ['p_proveedor', 'p_monto', 'p_obs'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      mostrarToast('Presupuesto agregado.');
+    }
+  }
+
+  async function quitarPresupuesto(evento, indice) {
+    evento.preventDefault();
+    evento.stopPropagation();
+    const s = solicitudAbierta();
+    if (!s) return;
+    const p = (s.presupuestos || [])[indice];
+    if (!p) return;
+    const ok = await pedirConfirmacion('Quitar presupuesto', '¿Querés quitar el presupuesto de ' + p.proveedor + ' por ' + formatoPesos(p.monto) + '?', 'Quitar');
+    if (!ok) return;
+    const nuevos = (s.presupuestos || []).filter(function(_, i) { return i !== indice; });
+    await actualizarSolicitud(s.id, { presupuestos: nuevos });
+  }
+
+  async function enviarAGerencia(boton) {
+    const s = solicitudAbierta();
+    if (!s || !(s.presupuestos || []).length) return;
+    const ok = await pedirConfirmacion('Enviar a Gerencia',
+      s.producto + ' (' + s.eess + ')\nCon ' + s.presupuestos.length + ' presupuesto(s).\nDespués de enviarla ya no vas a poder cambiar los presupuestos.',
+      'Enviar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'en_gerencia',
+      enviadaAGerenciaEn: firebase.firestore.FieldValue.serverTimestamp()
+    }, boton)) {
+      mostrarToast('Enviada a Gerencia.');
+    }
+  }
+
+  async function aprobarOrden(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const marcado = document.querySelector('input[name="g_presu"]:checked');
+    if (!marcado) {
+      mostrarToast('Elegí qué presupuesto aprobás.', true);
+      return;
+    }
+    const indice = parseInt(marcado.value, 10);
+    const p = s.presupuestos[indice];
+    const ok = await pedirConfirmacion('Aprobar orden',
+      s.producto + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'aprobada',
+      presupuestoElegido: indice,
+      resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      resueltaPor: usuarioActual.email
+    }, boton)) {
+      mostrarToast('Orden aprobada. Compras ya puede realizar la compra.');
+    }
+  }
+
+  async function rechazarOrden(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const esCompras = usuarioActual.rol === 'compras';
+    const motivo = await pedirTexto(esCompras ? 'Rechazar solicitud' : 'Rechazar orden',
+      s.producto + ' (' + s.eess + ')\n' + (esCompras
+        ? 'La solicitud se va a cerrar sin pasar por Gerencia. Escribí el motivo:'
+        : 'Contale a Compras por qué se rechaza:'),
+      'Motivo del rechazo', 'Rechazar');
+    if (motivo === null) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'rechazada',
+      motivoRechazo: motivo,
+      rechazadaPor: esCompras ? 'compras' : 'gerencia',
+      resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      resueltaPor: usuarioActual.email
+    }, boton)) {
+      mostrarToast(esCompras ? 'Solicitud rechazada. Quedó en el historial.' : 'Orden rechazada.');
+    }
+  }
+
+  async function finalizarCompra(boton) {
+    const s = solicitudAbierta();
+    if (!s) return;
+    const nota = (document.getElementById('d_nota') || { value: '' }).value.trim();
+    const ok = await pedirConfirmacion('Compra realizada', '¿Confirmás que ya se realizó la compra de ' + s.producto + ' (' + s.eess + ')?', 'Confirmar');
+    if (!ok) return;
+    if (await actualizarSolicitud(s.id, {
+      estado: 'finalizada',
+      finalizadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      notaCompra: nota
+    }, boton)) {
+      mostrarToast('Compra registrada como realizada.');
+    }
+  }
+
+  async function registrarUrgencia(id, boton) {
+    boton.disabled = true;
+    try {
+      await db.collection('urgencias').doc(id).update({
+        estado: 'registrada',
+        registradaEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      mostrarToast('Compra de urgencia registrada.');
+    } catch (err) {
+      boton.disabled = false;
+      mostrarToast(mensajeErrorEnvio(err), true);
+    }
+  }
+
+  function descargarPDFPanel(id) {
+    const s = datosSolicitudes.find(x => x.id === id);
+    if (!s) return;
+    try {
+      generarPDFOrden(s);
+    } catch (err) {
+      mostrarToast('No se pudo generar el PDF: ' + err.message, true);
+    }
+  }
+  // ---------- Sesión guardada en el celular ----------
+  // Si el usuario ya entró antes desde este teléfono, la app lo reconoce sola y
+  // no le vuelve a pedir la contraseña, aunque la pantalla se recargue sin querer.
+  let ingresandoManual = false;
+
+  function mostrarFormularioLogin() {
+    const cargando = document.getElementById('loginCargando');
+    const caja = document.getElementById('loginCaja');
+    if (cargando) cargando.style.display = 'none';
+    if (caja) caja.style.display = 'flex';
+  }
+
+  function restaurarSesion(user) {
+    return db.collection('usuarios').doc(user.email).get().then(function(docUsuario) {
+      if (!docUsuario.exists) {
+        mostrarFormularioLogin();
+        return auth.signOut();
+      }
+      usuarioActual = { email: docUsuario.id, rol: docUsuario.data().rol };
+      if (usuarioActual.rol === 'encargado') return cargarListas().then(entrarComoEncargado);
+      if (usuarioActual.rol === 'compras') return entrarComoCompras();
+      if (usuarioActual.rol === 'gerencia') return entrarComoGerencia();
+      usuarioActual = null;
+      mostrarFormularioLogin();
+      return auth.signOut();
+    }).catch(function() {
+      usuarioActual = null;
+      mostrarFormularioLogin();
+    });
+  }
+
+  auth.onAuthStateChanged(function(user) {
+    if (ingresandoManual || usuarioActual) return;
+    if (!user) { mostrarFormularioLogin(); return; }
+    restaurarSesion(user);
+  });
+</script>
+
+  <div id="modalFirma" class="modal-firma">
+    <h2 class="texto-metal">Firmá para enviar la orden</h2>
+    <div class="firma-wrap">
+      <canvas id="canvasFirma" width="600" height="260"
+        onpointerdown="firmaInicio(event)"
+        onpointermove="firmaMover(event)"
+        onpointerup="firmaFin(event)"
+        onpointercancel="firmaFin(event)"
+        onpointerleave="firmaFin(event)"></canvas>
+    </div>
+    <p class="firma-ayuda">Dibujá tu firma con el dedo dentro del recuadro</p>
+    <div class="firma-controles">
+      <button type="button" class="btn-secundario" onclick="cerrarFirma()">Cancelar</button>
+      <button type="button" class="btn-secundario" onclick="limpiarFirma()">Limpiar</button>
+      <button type="button" class="btn-principal" onclick="confirmarFirma()">Confirmar y enviar</button>
+    </div>
+  </div>
+
+  <div id="modalDetalle" class="modal-detalle">
+    <div class="detalle-barra">
+      <button type="button" onclick="cerrarDetalle()">‹ Volver</button>
+      <span>Detalle de la orden</span>
+    </div>
+    <div class="detalle-cuerpo" id="detalleCuerpo"></div>
+  </div>
+
+  <div id="modalAviso" class="modal-aviso">
+    <div class="aviso-caja">
+      <h2 id="avisoTitulo" class="texto-metal"></h2>
+      <p id="avisoTexto"></p>
+      <div id="avisoExtra"></div>
+      <div class="aviso-botones" id="avisoBotones"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+</body>
+</html>
