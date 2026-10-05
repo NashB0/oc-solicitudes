@@ -1433,7 +1433,7 @@
 
   function abrirDB() {
     if (dbPromesa) return dbPromesa;
-    dbPromesa = new Promise(function(resolve, reject) {
+    const promesa = new Promise(function(resolve, reject) {
       if (!window.indexedDB) {
         reject(new Error('Este navegador no permite guardar datos. Usá Chrome.'));
         return;
@@ -1445,40 +1445,61 @@
           base.createObjectStore(DB_STORE, { keyPath: 'id' });
         }
       };
-      req.onsuccess = function() { resolve(req.result); };
+      req.onsuccess = function() {
+        const base = req.result;
+        // El navegador puede cerrar esta conexión por su cuenta (en Android pasa cuando la
+        // app queda mucho tiempo en segundo plano). Si pasa, se olvida para abrir una nueva.
+        base.onclose = function() { if (dbPromesa === promesa) dbPromesa = null; };
+        base.onversionchange = function() { base.close(); if (dbPromesa === promesa) dbPromesa = null; };
+        resolve(base);
+      };
       req.onerror = function() { reject(req.error); };
     }).catch(function(err) {
-      dbPromesa = null;
+      if (dbPromesa === promesa) dbPromesa = null;
       throw err;
     });
-    return dbPromesa;
+    dbPromesa = promesa;
+    return promesa;
+  }
+
+  // Ejecuta una operación sobre la base local. Si la conexión guardada ya estaba cerrada
+  // (error "The database connection is closing"), abre una nueva y reintenta una vez.
+  function conBase(operacion) {
+    function intento(reintentar) {
+      return abrirDB().then(function(base) {
+        return new Promise(function(resolve, reject) {
+          try {
+            operacion(base, resolve, reject);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).catch(function(err) {
+        if (reintentar && err && err.name === 'InvalidStateError') {
+          dbPromesa = null;
+          return intento(false);
+        }
+        throw err;
+      });
+    }
+    return intento(true);
   }
 
   function obtenerLocales() {
-    return abrirDB().then(function(base) {
-      return new Promise(function(resolve, reject) {
-        const req = base.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
-        req.onsuccess = function() { resolve(req.result || []); };
-        req.onerror = function() { reject(req.error); };
-      });
+    return conBase(function(base, resolve, reject) {
+      const req = base.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { reject(req.error); };
     });
   }
 
   function guardarLocal(s) {
-    return abrirDB().then(function(base) {
-      return new Promise(function(resolve, reject) {
-        let tx;
-        try {
-          tx = base.transaction(DB_STORE, 'readwrite');
-          tx.objectStore(DB_STORE).put(s);
-        } catch (e) {
-          reject(e);
-          return;
-        }
-        tx.oncomplete = function() { resolve(); };
-        tx.onerror = function() { reject(tx.error); };
-        tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
-      });
+    return conBase(function(base, resolve, reject) {
+      const tx = base.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(s);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { reject(tx.error); };
+      tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
     });
   }
 
