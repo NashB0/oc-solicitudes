@@ -8,22 +8,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<script>
-  // ===== Entorno: real o de prueba =====
-  // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
-  //   nashb0.github.io/oc-solicitudes/        -> app REAL (proyecto Firebase oc-solicitudes)
-  //   nashb0.github.io/oc-solicitudes/test/   -> ENTORNO DE PRUEBA (proyecto test-oc-solicitudes)
-  // Es de prueba únicamente si la dirección pasa por una carpeta llamada "test".
-  // De esta decisión dependen tres cosas, más abajo en el archivo: el proyecto Firebase,
-  // el almacén local del celular (IndexedDB) y la franja de aviso.
-  // El ícono y el manifest no se deciden acá: cada carpeta tiene los suyos (manifest.json,
-  // icon-192.png, icon-512.png). Los de test/ son el ícono con la "T" y la app "OC Prueba".
-  var ES_PRUEBA = location.pathname.split('/').indexOf('test') !== -1;
-  if (ES_PRUEBA) {
-    document.documentElement.className += ' entorno-prueba';
-    document.title = 'PRUEBA · OC Solicitudes';
-  }
-</script>
 <style>
   :root {
     --gold: #c9a86a;
@@ -267,15 +251,6 @@
     color:#121212; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size:15px; margin-top:6px;
   }
   form button[type="submit"]:disabled { opacity:0.5; }
-  /* Limpiar formulario: chico y arriba de todo, junto al dictado y lejos de
-     "Generar solicitud", para que no se toque sin querer al terminar de cargar.
-     Además pide confirmación antes de borrar. */
-  .fila-limpiar { text-align:right; margin:-14px 0 2px; }
-  .fila-limpiar-sola { margin-top:0; }
-  .btn-limpiar {
-    padding:8px 2px; background:none; border:none; color: var(--text-dim);
-    font-size:12px; letter-spacing:0.5px; text-decoration:underline;
-  }
   .msg { min-height:20px; margin-top:10px; font-size:13px; }
   .msg.ok { color:#7fd88f; }
   .msg.error { color:var(--rojo); }
@@ -537,14 +512,6 @@
     width:32px; height:32px; border-radius:50%; border:1px solid var(--rojo);
     background:transparent; color: var(--rojo); font-size:18px; line-height:1; flex-shrink:0;
   }
-  /* Productos de la orden: la lista usa las mismas cajas que los presupuestos. */
-  fieldset.productos { padding-bottom:4px; }
-  fieldset.productos .msg { margin-top:0; min-height:0; }
-  fieldset.productos .msg:not(:empty) { margin:8px 0 10px; }
-  .prod-subtitulo { font-size:12px; letter-spacing:1px; text-transform:uppercase; color: var(--gold); margin:4px 0 10px; }
-  .prod-subtitulo:empty { display:none; }
-  .prod-item .presu-info b { color: var(--text); font-size:14px; }
-  .btn-contorno:disabled { opacity:0.5; }
   .btn-contorno {
     width:100%; padding:12px; border:2px solid var(--gold); border-radius:8px;
     background:transparent; color: var(--gold); font-weight:bold; font-size:13px;
@@ -564,10 +531,7 @@
   }
   .btn-rechazo:disabled { opacity:0.45; }
   .botones-fila { display:flex; gap:10px; }
-  /* Fila de Compras: dos mitades iguales, y algo más apretada para que
-     "Enviar a Gerencia" entre en un renglón en un celular común. */
-  .fila-compras > button { flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; letter-spacing:0.5px; border-width:2px; border-style:solid; }
-  .fila-compras > .btn-accion { border-color:transparent; }
+  .btn-rechazo-compras { margin-top:18px; }
   .detalle-resolucion {
     display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.4;
     border-radius:10px; padding:12px; margin:14px 0; border:1px solid #444;
@@ -590,34 +554,9 @@
   }
   .toast.visible { opacity:1; transform:translateY(0); }
   .toast.error { background:#2a1616; border-color: var(--rojo); color:#f3c0c0; }
-
-  /* ---------- Entorno de prueba ---------- */
-  /* Todo este bloque solo actúa cuando la página se abre desde /test/.
-     En la app real la franja no existe y nada de la disposición cambia. */
-  #franjaPrueba { display:none; }
-  html.entorno-prueba { --franja:34px; }
-  html.entorno-prueba #franjaPrueba {
-    display:flex; align-items:center; justify-content:center;
-    position:fixed; top:0; left:0; right:0; height:var(--franja); z-index:3000;
-    background: var(--gold-metal);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-  }
-  html.entorno-prueba #franjaPrueba span {
-    color:#121212;
-    font-size:13px; font-weight:800; letter-spacing:3px; white-space:nowrap;
-  }
-  /* La franja queda siempre arriba de todo, así que lo demás se corre hacia abajo. */
-  html.entorno-prueba body { padding-top:var(--franja); }
-  html.entorno-prueba #app { min-height:calc(100vh - var(--franja)); }
-  html.entorno-prueba .modal-firma,
-  html.entorno-prueba .modal-aviso,
-  html.entorno-prueba .modal-detalle { top:var(--franja); }
-  html.entorno-prueba .toast { top:calc(74px + var(--franja)); }
 </style>
 </head>
 <body>
-
-  <div id="franjaPrueba" role="status"><span>ENTORNO DE PRUEBA</span></div>
 
   <div id="loginScreen">
     <img class="logo" src="icon-192.png" alt="OC Solicitudes">
@@ -662,7 +601,6 @@
         <form id="formSolicitud" onsubmit="return guardarSolicitud(event)">
           <button type="button" id="btnDictar" class="btn-dictar" onclick="iniciarDictado()">🎤 Dictar solicitud</button>
           <div id="dictadoEstado" class="msg"></div>
-          <div class="fila-limpiar"><button type="button" class="btn-limpiar" id="btnLimpiarNormal" onclick="limpiarFormulario('normal')">Limpiar formulario</button></div>
 
           <label>EESS / Destino
             <select id="f_eess" required onchange="actualizarEncargado('f')"></select>
@@ -688,34 +626,24 @@
             <label class="radio"><input type="radio" name="f_categoria" value="Varios"> Varios</label>
           </fieldset>
 
-          <fieldset class="productos">
-            <legend>Productos / Servicios</legend>
-            <div id="f_listaProductos"></div>
-            <p class="prod-subtitulo" id="f_subtituloProducto"></p>
+          <label>Producto / Servicio solicitado
+            <input type="text" id="f_producto" required>
+          </label>
 
-            <label>Producto / Servicio solicitado
-              <input type="text" id="f_producto">
-            </label>
-
-            <label>Cantidad
-              <input type="number" id="f_cantidad" min="1" step="1" inputmode="numeric">
-            </label>
-
-            <label>Características / Especificaciones
-              <textarea id="f_caracteristicas" rows="2"></textarea>
-            </label>
-
-            <button type="button" class="btn-contorno" id="btnAgregarProducto" onclick="agregarProducto()">+ Agregar otro producto</button>
-            <p class="detalle-nota" id="f_ayudaProductos"></p>
-            <div id="f_msgProducto" class="msg"></div>
-          </fieldset>
+          <label>Cantidad
+            <input type="number" id="f_cantidad" min="1" step="1" inputmode="numeric" required>
+          </label>
 
           <label>Fecha en que se necesita
             <input type="date" id="f_fechaNecesaria" required>
           </label>
 
           <label>Motivo / Justificación
-            <textarea id="f_motivo" rows="3"></textarea>
+            <textarea id="f_motivo" rows="3" required></textarea>
+          </label>
+
+          <label>Características / Especificaciones
+            <textarea id="f_caracteristicas" rows="3"></textarea>
           </label>
 
           <button type="submit">Generar solicitud</button>
@@ -724,7 +652,6 @@
 
         <!-- Formulario: compra de urgencia -->
         <form id="formUrgencia" onsubmit="return informarUrgencia(event)" style="display:none">
-          <div class="fila-limpiar fila-limpiar-sola"><button type="button" class="btn-limpiar" id="btnLimpiarUrgencia" onclick="limpiarFormulario('urgencia')">Limpiar formulario</button></div>
           <label>EESS / Destino
             <select id="u_eess" required onchange="actualizarEncargado('u')"></select>
           </label>
@@ -835,8 +762,7 @@
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <script>
-  // Proyecto Firebase de la app real.
-  const CONFIG_REAL = {
+  const firebaseConfig = {
     apiKey: "AIzaSyAlRVgYaty5lVVVBPrUa13M53_p7V0ah-g",
     authDomain: "oc-solicitudes.firebaseapp.com",
     projectId: "oc-solicitudes",
@@ -844,17 +770,6 @@
     messagingSenderId: "782963757998",
     appId: "1:782963757998:web:83f24fa6ebcdd39aba2e3f"
   };
-  // Proyecto Firebase del entorno de prueba. Tiene sus propios usuarios (los t-) y su propia base.
-  const CONFIG_PRUEBA = {
-    apiKey: "AIzaSyALZqttJXDdvDX3RtTLGoTJjtJBxu84npM",
-    authDomain: "test-oc-solicitudes.firebaseapp.com",
-    projectId: "test-oc-solicitudes",
-    storageBucket: "test-oc-solicitudes.firebasestorage.app",
-    messagingSenderId: "784286676089",
-    appId: "1:784286676089:web:d92282ead20ccc171410a8"
-  };
-  // ES_PRUEBA se define al principio del archivo, según la dirección desde la que se abre.
-  const firebaseConfig = ES_PRUEBA ? CONFIG_PRUEBA : CONFIG_REAL;
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -1004,7 +919,6 @@
     document.getElementById('app').style.display = 'flex';
     mostrarNav('encargado');
     seleccionarModo('normal');
-    limpiarProductosForm();
     ponerFechasDeHoy();
     mostrarTab('inicio');
     renderGeneradas();
@@ -1033,7 +947,6 @@
     usuarioActual = null;
 
     document.getElementById('formSolicitud').reset();
-    limpiarProductosForm();
     document.getElementById('formUrgencia').reset();
     validarImporte();
     ['f_msg', 'u_msg', 'dictadoEstado'].forEach(function(id) { document.getElementById(id).textContent = ''; });
@@ -1118,10 +1031,6 @@
   function ponerFechasDeHoy() {
     document.getElementById('f_fecha').value = hoyISO();
     document.getElementById('u_fecha').value = hoyISO();
-  }
-
-  function ponerFechasDeHoySoloEn(id) {
-    document.getElementById(id).value = hoyISO();
   }
 
   function fechaCorta(iso) {
@@ -1424,16 +1333,14 @@
 
   // ---------- Guardado local en el celular (IndexedDB) ----------
   // Guarda los borradores pendientes de firma y el historial de lo enviado desde este celular.
-  // Las dos direcciones son el mismo sitio para el navegador, así que comparten IndexedDB.
-  // Por eso el entorno de prueba usa una base con otro nombre: su historial no se mezcla con el real.
-  const DB_NOMBRE = ES_PRUEBA ? 'oc_solicitudes_db_test' : 'oc_solicitudes_db';
+  const DB_NOMBRE = 'oc_solicitudes_db';
   const DB_STORE = 'solicitudes';
   const cacheSolicitudes = new Map();
   let dbPromesa = null;
 
   function abrirDB() {
     if (dbPromesa) return dbPromesa;
-    const promesa = new Promise(function(resolve, reject) {
+    dbPromesa = new Promise(function(resolve, reject) {
       if (!window.indexedDB) {
         reject(new Error('Este navegador no permite guardar datos. Usá Chrome.'));
         return;
@@ -1445,61 +1352,40 @@
           base.createObjectStore(DB_STORE, { keyPath: 'id' });
         }
       };
-      req.onsuccess = function() {
-        const base = req.result;
-        // El navegador puede cerrar esta conexión por su cuenta (en Android pasa cuando la
-        // app queda mucho tiempo en segundo plano). Si pasa, se olvida para abrir una nueva.
-        base.onclose = function() { if (dbPromesa === promesa) dbPromesa = null; };
-        base.onversionchange = function() { base.close(); if (dbPromesa === promesa) dbPromesa = null; };
-        resolve(base);
-      };
+      req.onsuccess = function() { resolve(req.result); };
       req.onerror = function() { reject(req.error); };
     }).catch(function(err) {
-      if (dbPromesa === promesa) dbPromesa = null;
+      dbPromesa = null;
       throw err;
     });
-    dbPromesa = promesa;
-    return promesa;
-  }
-
-  // Ejecuta una operación sobre la base local. Si la conexión guardada ya estaba cerrada
-  // (error "The database connection is closing"), abre una nueva y reintenta una vez.
-  function conBase(operacion) {
-    function intento(reintentar) {
-      return abrirDB().then(function(base) {
-        return new Promise(function(resolve, reject) {
-          try {
-            operacion(base, resolve, reject);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }).catch(function(err) {
-        if (reintentar && err && err.name === 'InvalidStateError') {
-          dbPromesa = null;
-          return intento(false);
-        }
-        throw err;
-      });
-    }
-    return intento(true);
+    return dbPromesa;
   }
 
   function obtenerLocales() {
-    return conBase(function(base, resolve, reject) {
-      const req = base.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
-      req.onsuccess = function() { resolve(req.result || []); };
-      req.onerror = function() { reject(req.error); };
+    return abrirDB().then(function(base) {
+      return new Promise(function(resolve, reject) {
+        const req = base.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { reject(req.error); };
+      });
     });
   }
 
   function guardarLocal(s) {
-    return conBase(function(base, resolve, reject) {
-      const tx = base.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).put(s);
-      tx.oncomplete = function() { resolve(); };
-      tx.onerror = function() { reject(tx.error); };
-      tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
+    return abrirDB().then(function(base) {
+      return new Promise(function(resolve, reject) {
+        let tx;
+        try {
+          tx = base.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put(s);
+        } catch (e) {
+          reject(e);
+          return;
+        }
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(tx.error); };
+        tx.onabort = function() { reject(tx.error || new Error('Se canceló el guardado')); };
+      });
     });
   }
 
@@ -1518,153 +1404,6 @@
     return false;
   }
 
-  // ---------- Productos de la orden ----------
-  // Una orden puede llevar varios productos. Se guardan en "items", una lista de
-  // { producto, cantidad, caracteristicas }. Las solicitudes anteriores a este cambio
-  // tienen un solo producto en campos sueltos y se leen como una lista de un elemento.
-  const MAX_PRODUCTOS = 20;
-  let productosForm = [];   // productos ya agregados a la orden que se está cargando
-
-  function productosDe(s) {
-    if (s && Array.isArray(s.items) && s.items.length) return s.items;
-    return [{
-      producto: (s && s.producto) || '',
-      cantidad: s ? s.cantidad : '',
-      caracteristicas: (s && s.caracteristicas) || ''
-    }];
-  }
-
-  // Nombre corto de la orden para tarjetas, avisos y confirmaciones.
-  function tituloDe(s) {
-    const items = productosDe(s);
-    if (items.length === 1) return items[0].producto;
-    return items[0].producto + ' y ' + (items.length - 1) + ' más';
-  }
-
-  // Filas de producto para las tarjetas del encargado.
-  function filasProductos(s) {
-    const items = productosDe(s);
-    if (items.length === 1) return '<div class="card-row">Cantidad: ' + escaparHTML(items[0].cantidad) + '</div>';
-    return items.map(function(p) {
-      return '<div class="card-row">' + escaparHTML(p.cantidad) + ' × ' + escaparHTML(p.producto) + '</div>';
-    }).join('');
-  }
-
-  // Caja de un producto, con el mismo aspecto que un presupuesto.
-  function cajaProducto(p, botonQuitar) {
-    return '<div class="presu prod-item">' +
-      '<div class="presu-info">' +
-        '<b>' + escaparHTML(p.producto) + '</b>' +
-        '<span class="presu-monto">Cantidad: ' + escaparHTML(p.cantidad) + '</span>' +
-        (p.caracteristicas ? '<span class="presu-obs">' + escaparHTML(p.caracteristicas) + '</span>' : '') +
-      '</div>' + (botonQuitar || '') +
-    '</div>';
-  }
-
-  // Lee los campos de producto del formulario.
-  // Devuelve { vacio:true } si no hay nada escrito, { error } si falta algo, o { item }.
-  function leerProductoDelFormulario() {
-    const producto = document.getElementById('f_producto').value.trim();
-    const cantidadTxt = document.getElementById('f_cantidad').value.trim();
-    const caracteristicas = document.getElementById('f_caracteristicas').value.trim();
-    if (!producto && !cantidadTxt && !caracteristicas) return { vacio: true };
-    if (!producto) return { error: 'Falta el nombre del producto.' };
-    const cantidad = Number(cantidadTxt);
-    if (!cantidadTxt || !Number.isInteger(cantidad) || cantidad < 1) {
-      return { error: 'Indicá la cantidad de "' + producto + '" (un número entero, 1 o más).' };
-    }
-    return { item: { producto: producto, cantidad: cantidad, caracteristicas: caracteristicas } };
-  }
-
-  function mensajeProducto(texto, esError) {
-    const m = document.getElementById('f_msgProducto');
-    m.textContent = texto || '';
-    m.className = 'msg' + (texto ? (esError ? ' error' : ' ok') : '');
-  }
-
-  function renderProductosForm() {
-    const n = productosForm.length;
-    document.getElementById('f_listaProductos').innerHTML = productosForm.map(function(p, i) {
-      return cajaProducto(p, '<button type="button" class="presu-quitar" onclick="quitarProducto(' + i + ')" aria-label="Quitar producto">×</button>');
-    }).join('');
-    document.getElementById('f_subtituloProducto').textContent = n ? 'Producto ' + (n + 1) : '';
-    const lleno = n >= MAX_PRODUCTOS;
-    document.getElementById('btnAgregarProducto').disabled = lleno;
-    document.getElementById('f_ayudaProductos').textContent = lleno
-      ? 'Llegaste al máximo de ' + MAX_PRODUCTOS + ' productos por orden.'
-      : (n
-        ? 'Completá los campos para sumar otro producto, o generá la solicitud con ' + (n === 1 ? 'el que ya cargaste.' : 'los ' + n + ' que ya cargaste.')
-        : 'Si la orden lleva un solo producto, completalo y generá la solicitud. Para sumar más, tocá el botón.');
-  }
-
-  function agregarProducto() {
-    if (productosForm.length >= MAX_PRODUCTOS) return;
-    const lectura = leerProductoDelFormulario();
-    if (lectura.vacio) { mensajeProducto('Completá el producto y la cantidad antes de agregar otro.', true); return; }
-    if (lectura.error) { mensajeProducto(lectura.error, true); return; }
-    productosForm.push(lectura.item);
-    ['f_producto', 'f_cantidad', 'f_caracteristicas'].forEach(function(id) { document.getElementById(id).value = ''; });
-    mensajeProducto('');
-    renderProductosForm();
-    document.getElementById('f_producto').focus();
-  }
-
-  function quitarProducto(indice) {
-    productosForm.splice(indice, 1);
-    mensajeProducto('');
-    renderProductosForm();
-  }
-
-  function limpiarProductosForm() {
-    productosForm = [];
-    mensajeProducto('');
-    renderProductosForm();
-  }
-
-  // ---------- Limpiar formulario ----------
-  // Borra lo que se está cargando (campos y productos agregados). No toca lo ya
-  // generado ni lo enviado. Si hay algo escrito, pide confirmación antes.
-  function hayDatosCargados(modo) {
-    const lleno = function(id) { return document.getElementById(id).value.trim() !== ''; };
-    if (modo === 'urgencia') {
-      return ['u_eess', 'u_detalle', 'u_motivo', 'u_importe', 'u_proveedor', 'u_comprobante'].some(lleno);
-    }
-    return productosForm.length > 0 ||
-      !!document.querySelector('input[name="f_categoria"]:checked') ||
-      ['f_eess', 'f_producto', 'f_cantidad', 'f_caracteristicas', 'f_fechaNecesaria', 'f_motivo'].some(lleno);
-  }
-
-  async function limpiarFormulario(modo) {
-    const esUrgencia = modo === 'urgencia';
-    const msg = document.getElementById(esUrgencia ? 'u_msg' : 'f_msg');
-    if (!hayDatosCargados(modo)) {
-      mostrarToast('No hay nada cargado para limpiar.');
-      return;
-    }
-    const n = esUrgencia ? 0 : productosForm.length;
-    const ok = await pedirConfirmacion('Limpiar formulario',
-      'Se va a borrar todo lo que cargaste en este formulario' +
-      (n ? ', incluidos ' + (n === 1 ? 'el producto que ya agregaste' : 'los ' + n + ' productos que ya agregaste') : '') +
-      '.\nLo que ya generaste o enviaste no se toca.', 'Limpiar');
-    if (!ok) return;
-
-    if (esUrgencia) {
-      document.getElementById('formUrgencia').reset();
-      validarImporte();
-      actualizarEncargado('u');
-    } else {
-      document.getElementById('formSolicitud').reset();
-      limpiarProductosForm();
-      document.getElementById('dictadoEstado').textContent = '';
-      actualizarEncargado('f');
-    }
-    ponerFechasDeHoySoloEn(esUrgencia ? 'u_fecha' : 'f_fecha');
-    msg.textContent = '';
-    msg.className = 'msg';
-    window.scrollTo(0, 0);
-    mostrarToast('Formulario limpio.');
-  }
-
   async function guardarSolicitudAsync() {
     const msg = document.getElementById('f_msg');
     const btn = document.querySelector('#formSolicitud button[type="submit"]');
@@ -1676,26 +1415,6 @@
       return;
     }
 
-    // Lo que esté escrito en los campos cuenta como un producto más, sin obligar
-    // a tocar "Agregar otro producto": así la orden de un solo producto se carga como siempre.
-    const lectura = leerProductoDelFormulario();
-    if (lectura.error) {
-      msg.textContent = lectura.error;
-      msg.className = 'msg error';
-      return;
-    }
-    const items = productosForm.concat(lectura.item ? [lectura.item] : []);
-    if (!items.length) {
-      msg.textContent = 'Cargá al menos un producto.';
-      msg.className = 'msg error';
-      return;
-    }
-    if (items.length > MAX_PRODUCTOS) {
-      msg.textContent = 'Una orden puede llevar hasta ' + MAX_PRODUCTOS + ' productos. Quitá alguno o cargá otra orden.';
-      msg.className = 'msg error';
-      return;
-    }
-
     const solicitud = {
       id: generarId('oc'),
       tipo: 'normal',
@@ -1703,13 +1422,11 @@
       encargado: encargadoDeEstacion(document.getElementById('f_eess').value),
       fecha: document.getElementById('f_fecha').value,
       categoria: categoriaEl.value,
-      items: items,
-      // Resumen de la orden. Con un solo producto son sus mismos datos, como antes de "items".
-      producto: tituloDe({ items: items }),
-      cantidad: items.reduce(function(total, p) { return total + p.cantidad; }, 0),
+      producto: document.getElementById('f_producto').value.trim(),
+      cantidad: Number(document.getElementById('f_cantidad').value),
       fechaNecesaria: document.getElementById('f_fechaNecesaria').value,
       motivo: document.getElementById('f_motivo').value.trim(),
-      caracteristicas: items.length === 1 ? items[0].caracteristicas : '',
+      caracteristicas: document.getElementById('f_caracteristicas').value.trim(),
       estadoLocal: 'pendiente_firma',
       creada: new Date().toISOString(),
       creadoPor: usuarioActual ? usuarioActual.email : ''
@@ -1719,7 +1436,6 @@
     try {
       await guardarLocal(solicitud);
       document.getElementById('formSolicitud').reset();
-      limpiarProductosForm();
       document.getElementById('dictadoEstado').textContent = '';
       actualizarEncargado('f');
       ponerFechasDeHoy();
@@ -1848,11 +1564,11 @@
       card.className = 'card';
       card.innerHTML =
         '<div class="card-top">' +
-          '<span class="card-title">' + escaparHTML(tituloDe(s)) + '</span>' +
+          '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
           '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
         '</div>' +
         '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
-        filasProductos(s) +
+        '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + '</div>' +
         '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
         '<button class="btn-generar-pdf" onclick="abrirFirma(\'' + s.id + '\')">Firmar y enviar a Compras</button>';
       cont.appendChild(card);
@@ -1896,11 +1612,11 @@
       } else {
         card.innerHTML =
           '<div class="card-top">' +
-            '<span class="card-title">' + escaparHTML(tituloDe(s)) + '</span>' +
+            '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
             '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
           '</div>' +
           '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
-          filasProductos(s) +
+          '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + '</div>' +
           '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
           filaRechazo +
           '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
@@ -1946,7 +1662,7 @@
   }
 
   function textoNovedad(s, estado) {
-    const nombre = s.tipo === 'urgencia' ? s.detalle : tituloDe(s);
+    const nombre = s.tipo === 'urgencia' ? s.detalle : s.producto;
     if (estado === 'en_gerencia') return 'Compras presupuestó "' + nombre + '" y pasó a Gerencia';
     if (estado === 'aprobada') return 'Gerencia aprobó "' + nombre + '"';
     if (estado === 'finalizada') return 'Ya se realizó la compra de "' + nombre + '"';
@@ -2095,42 +1811,11 @@
     linea('Encargado', solicitud.encargado);
     linea('Fecha', fechaCorta(solicitud.fecha));
     linea('Categoría', solicitud.categoria);
-    const items = productosDe(solicitud);
-    if (items.length === 1) {
-      linea('Producto / Servicio', items[0].producto);
-      linea('Cantidad', String(items[0].cantidad));
-    }
+    linea('Producto / Servicio', solicitud.producto);
+    linea('Cantidad', String(solicitud.cantidad));
     linea('Fecha en que se necesita', fechaCorta(solicitud.fechaNecesaria));
     linea('Motivo / Justificación', solicitud.motivo);
-    if (items.length === 1) {
-      linea('Características', items[0].caracteristicas || '-');
-    } else {
-      // Varios productos: una lista numerada, cada uno con su cantidad y sus características.
-      y += 3;
-      doc.setFont(undefined, 'bold');
-      doc.text('Productos / Servicios (' + items.length + '):', 15, y);
-      y += 7;
-      doc.setFont(undefined, 'normal');
-      items.forEach(function(p, i) {
-        const titulo = doc.splitTextToSize((i + 1) + '. ' + p.producto + ' — Cantidad: ' + p.cantidad, 175);
-        doc.setFontSize(10);
-        const detalle = p.caracteristicas ? doc.splitTextToSize(p.caracteristicas, 168) : [];
-        doc.setFontSize(11);
-        // un producto no se parte entre dos hojas
-        if (y + 6 * titulo.length + 5 * detalle.length > 282) { doc.addPage(); y = 20; }
-        doc.text(titulo, 20, y);
-        y += 6 * titulo.length;
-        if (detalle.length) {
-          doc.setFontSize(10);
-          doc.setTextColor(90, 90, 90);
-          doc.text(detalle, 27, y);
-          y += 5 * detalle.length;
-          doc.setFontSize(11);
-          doc.setTextColor(0, 0, 0);
-        }
-        y += 2;
-      });
-    }
+    linea('Características', solicitud.caracteristicas || '-');
 
     const presus = solicitud.presupuestos || [];
     if (presus.length) {
@@ -2298,7 +1983,6 @@
         encargado: solicitud.encargado,
         fecha: solicitud.fecha,
         categoria: solicitud.categoria,
-        items: productosDe(solicitud),
         producto: solicitud.producto,
         cantidad: solicitud.cantidad,
         fechaNecesaria: solicitud.fechaNecesaria,
@@ -2445,12 +2129,12 @@
       datosSolicitudes.forEach(function(s) {
         if (estadosPrevios[s.id] === s.estado) return;
         if (usuarioActual.rol === 'compras') {
-          if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + tituloDe(s) + ' (' + s.eess + ')');
-          if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + tituloDe(s) + ' (' + s.eess + ')');
-          if (s.estado === 'rechazada' && s.rechazadaPor !== 'compras') mostrarToast('Gerencia rechazó: ' + tituloDe(s) + ' (' + s.eess + ')');
+          if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + s.producto + ' (' + s.eess + ')');
+          if (s.estado === 'rechazada' && s.rechazadaPor !== 'compras') mostrarToast('Gerencia rechazó: ' + s.producto + ' (' + s.eess + ')');
         }
         if (usuarioActual.rol === 'gerencia' && s.estado === 'en_gerencia') {
-          mostrarToast('Nueva orden para aprobar: ' + tituloDe(s) + ' (' + s.eess + ')');
+          mostrarToast('Nueva orden para aprobar: ' + s.producto + ' (' + s.eess + ')');
         }
       });
     }
@@ -2477,14 +2161,13 @@
 
   function tarjetaSolicitud(s) {
     const n = (s.presupuestos || []).length;
-    const items = productosDe(s);
     return '<div class="card card-click" onclick="abrirDetalle(\'' + s.id + '\')">' +
       '<div class="card-top">' +
-        '<span class="card-title">' + escaparHTML(tituloDe(s)) + '</span>' +
+        '<span class="card-title">' + escaparHTML(s.producto) + '</span>' +
         '<span class="card-date">' + fechaCorta(s.fecha) + '</span>' +
       '</div>' +
       '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.categoria) + '</div>' +
-      '<div class="card-row">' + (items.length === 1 ? 'Cantidad: ' + escaparHTML(items[0].cantidad) : items.length + ' productos') + (n ? ' · Presupuestos: ' + n : '') + '</div>' +
+      '<div class="card-row">Cantidad: ' + escaparHTML(s.cantidad) + (n ? ' · Presupuestos: ' + n : '') + '</div>' +
       '<div class="card-pie">' + (s.estado === 'rechazada' && s.rechazadaPor === 'compras'
         ? '<span class="chip chip-rechazo">Rechazada por Compras</span>'
         : chipEstado(s.estado)) + '<span class="card-ver">Ver detalle ›</span></div>' +
@@ -2583,25 +2266,18 @@
     const presupuestos = s.presupuestos || [];
     let html = '';
 
-    const items = productosDe(s);
-    const unico = items.length === 1;
-    html += '<div class="detalle-cab"><h2>' + escaparHTML(tituloDe(s)) + '</h2>' + chipEstado(s.estado) + '</div>';
+    html += '<div class="detalle-cab"><h2>' + escaparHTML(s.producto) + '</h2>' + chipEstado(s.estado) + '</div>';
 
     html += '<div class="detalle-seccion">' +
       filaDato('EESS / Destino', s.eess) +
       filaDato('Encargado', s.encargado) +
       filaDato('Fecha', fechaCorta(s.fecha)) +
       filaDato('Categoría', s.categoria) +
-      (unico ? filaDato('Cantidad', String(items[0].cantidad)) : '') +
+      filaDato('Cantidad', String(s.cantidad)) +
       filaDato('Se necesita para', fechaCorta(s.fechaNecesaria)) +
       filaDato('Motivo', s.motivo) +
-      (unico ? filaDato('Características', items[0].caracteristicas) : '') +
+      filaDato('Características', s.caracteristicas) +
     '</div>';
-
-    if (!unico) {
-      html += '<h3 class="detalle-titulo">Productos (' + items.length + ')</h3>' +
-        items.map(function(p) { return cajaProducto(p); }).join('');
-    }
 
     html += '<button type="button" class="btn-contorno" onclick="descargarPDFPanel(\'' + s.id + '\')">Descargar PDF</button>';
 
@@ -2633,14 +2309,10 @@
         '<input type="text" id="p_obs" placeholder="Observaciones (opcional)">' +
         '<button type="button" class="btn-contorno" onclick="agregarPresupuesto(this)">+ Agregar presupuesto</button>' +
       '</div>';
-      // Misma disposición que en Gerencia: rechazar a la izquierda, avanzar a la derecha.
-      html += '<p class="detalle-nota">' + (presupuestos.length
-          ? 'Enviala a Gerencia, o rechazala si está duplicada, mal cargada o no corresponde.'
-          : 'Cargá al menos un presupuesto para poder enviarla a Gerencia. Rechazala si está duplicada, mal cargada o no corresponde.') + '</p>' +
-        '<div class="botones-fila fila-compras">' +
-          '<button type="button" class="btn-rechazo" onclick="rechazarOrden(this)">Rechazar</button>' +
-          '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>' +
-        '</div>';
+      html += '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>';
+      if (!presupuestos.length) html += '<p class="detalle-nota">Cargá al menos un presupuesto para poder enviarla.</p>';
+      html += '<button type="button" class="btn-rechazo btn-rechazo-compras" onclick="rechazarOrden(this)">Rechazar solicitud</button>' +
+        '<p class="detalle-nota">Usalo si la solicitud está duplicada, mal cargada o no corresponde.</p>';
     }
 
     // Estado / resolución
@@ -2741,7 +2413,7 @@
     const s = solicitudAbierta();
     if (!s || !(s.presupuestos || []).length) return;
     const ok = await pedirConfirmacion('Enviar a Gerencia',
-      tituloDe(s) + ' (' + s.eess + ')\nCon ' + s.presupuestos.length + ' presupuesto(s).\nDespués de enviarla ya no vas a poder cambiar los presupuestos.',
+      s.producto + ' (' + s.eess + ')\nCon ' + s.presupuestos.length + ' presupuesto(s).\nDespués de enviarla ya no vas a poder cambiar los presupuestos.',
       'Enviar');
     if (!ok) return;
     if (await actualizarSolicitud(s.id, {
@@ -2763,7 +2435,7 @@
     const indice = parseInt(marcado.value, 10);
     const p = s.presupuestos[indice];
     const ok = await pedirConfirmacion('Aprobar orden',
-      tituloDe(s) + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
+      s.producto + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
     if (!ok) return;
     if (await actualizarSolicitud(s.id, {
       estado: 'aprobada',
@@ -2780,7 +2452,7 @@
     if (!s) return;
     const esCompras = usuarioActual.rol === 'compras';
     const motivo = await pedirTexto(esCompras ? 'Rechazar solicitud' : 'Rechazar orden',
-      tituloDe(s) + ' (' + s.eess + ')\n' + (esCompras
+      s.producto + ' (' + s.eess + ')\n' + (esCompras
         ? 'La solicitud se va a cerrar sin pasar por Gerencia. Escribí el motivo:'
         : 'Contale a Compras por qué se rechaza:'),
       'Motivo del rechazo', 'Rechazar');
@@ -2800,7 +2472,7 @@
     const s = solicitudAbierta();
     if (!s) return;
     const nota = (document.getElementById('d_nota') || { value: '' }).value.trim();
-    const ok = await pedirConfirmacion('Compra realizada', '¿Confirmás que ya se realizó la compra de ' + tituloDe(s) + ' (' + s.eess + ')?', 'Confirmar');
+    const ok = await pedirConfirmacion('Compra realizada', '¿Confirmás que ya se realizó la compra de ' + s.producto + ' (' + s.eess + ')?', 'Confirmar');
     if (!ok) return;
     if (await actualizarSolicitud(s.id, {
       estado: 'finalizada',
