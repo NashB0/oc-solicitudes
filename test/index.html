@@ -564,7 +564,10 @@
   }
   .btn-rechazo:disabled { opacity:0.45; }
   .botones-fila { display:flex; gap:10px; }
-  .btn-rechazo-compras { margin-top:18px; }
+  /* Fila de Compras: dos mitades iguales, y algo más apretada para que
+     "Enviar a Gerencia" entre en un renglón en un celular común. */
+  .fila-compras > button { flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; letter-spacing:0.5px; border-width:2px; border-style:solid; }
+  .fila-compras > .btn-accion { border-color:transparent; }
   .detalle-resolucion {
     display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.4;
     border-radius:10px; padding:12px; margin:14px 0; border:1px solid #444;
@@ -712,7 +715,7 @@
           </label>
 
           <label>Motivo / Justificación
-            <textarea id="f_motivo" rows="3" required></textarea>
+            <textarea id="f_motivo" rows="3"></textarea>
           </label>
 
           <button type="submit">Generar solicitud</button>
@@ -2609,10 +2612,14 @@
         '<input type="text" id="p_obs" placeholder="Observaciones (opcional)">' +
         '<button type="button" class="btn-contorno" onclick="agregarPresupuesto(this)">+ Agregar presupuesto</button>' +
       '</div>';
-      html += '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>';
-      if (!presupuestos.length) html += '<p class="detalle-nota">Cargá al menos un presupuesto para poder enviarla.</p>';
-      html += '<button type="button" class="btn-rechazo btn-rechazo-compras" onclick="rechazarOrden(this)">Rechazar solicitud</button>' +
-        '<p class="detalle-nota">Usalo si la solicitud está duplicada, mal cargada o no corresponde.</p>';
+      // Misma disposición que en Gerencia: rechazar a la izquierda, avanzar a la derecha.
+      html += '<p class="detalle-nota">' + (presupuestos.length
+          ? 'Enviala a Gerencia, o rechazala si está duplicada, mal cargada o no corresponde.'
+          : 'Cargá al menos un presupuesto para poder enviarla a Gerencia. Rechazala si está duplicada, mal cargada o no corresponde.') + '</p>' +
+        '<div class="botones-fila fila-compras">' +
+          '<button type="button" class="btn-rechazo" onclick="rechazarOrden(this)">Rechazar</button>' +
+          '<button type="button" class="btn-accion" onclick="enviarAGerencia(this)"' + (presupuestos.length ? '' : ' disabled') + '>Enviar a Gerencia</button>' +
+        '</div>';
     }
 
     // Estado / resolución
