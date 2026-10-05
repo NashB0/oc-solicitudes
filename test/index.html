@@ -13,7 +13,7 @@
   // Se muestra en la pantalla de ingreso y arriba a la izquierda dentro de la app, para
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // 2.M.C, donde M es la mejora en curso y C el número de corrección dentro de esa mejora.
-  var VERSION_APP = '2.1.0';
+  var VERSION_APP = '2.2.0';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -363,6 +363,17 @@
     text-transform:uppercase;
   }
   .card .btn-generar-pdf:disabled { opacity:0.5; }
+  /* Confirmar recepción: es el paso que cierra el circuito, así que la tarjeta que lo espera
+     se resalta en verde (el color de "aprobado" y "recibido" en el resto de la app). */
+  .card.card-por-recibir { border-color:#58b86a; box-shadow:0 0 10px rgba(88,184,106,0.28); }
+  .card .card-aviso-recibir { margin-top:10px; font-size:13px; font-weight:bold; color:#8fdc9d; }
+  .card .btn-recibir {
+    background: linear-gradient(160deg, #a9ecb5 0%, #58b86a 45%, #2e7a41 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 8px rgba(88,184,106,0.45);
+    color:#07140b; padding:14px; font-size:14px; letter-spacing:1px; margin-top:8px;
+  }
+  /* En esa tarjeta el botón del PDF pasa a contorno, para que no compita. */
+  .card .btn-card-secundario { background:transparent; box-shadow:none; border:2px solid var(--gold); color: var(--gold); padding:8px; }
   .card .card-estado {
     font-size:10px;
     color: var(--text-dim);
@@ -1893,8 +1904,8 @@
     lista.forEach(s => {
       cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
-      card.className = 'card';
       const estado = estadoActualLocal(s);
+      card.className = 'card' + (s.tipo !== 'urgencia' && estado === 'finalizada' ? ' card-por-recibir' : '');
       let filaRechazo = '';
       if (estado === 'rechazada' && s.motivoRechazo) {
         const quien = s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia';
@@ -1920,8 +1931,12 @@
           filasProductos(s) +
           '<div class="card-row">Encargado: ' + escaparHTML(s.encargado) + '</div>' +
           filaRechazo +
+          (estado === 'recibida' ? '<div class="card-row">Recibida' + (s.recibidaPorNombre ? ' por ' + escaparHTML(s.recibidaPorNombre) : '') + (s.recibidaLocal ? ' el ' + fechaCorta(s.recibidaLocal) : '') + '</div>' : '') +
           '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
-          '<button class="btn-generar-pdf" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
+          // Último paso del circuito: cuando Compras ya realizó la compra, el encargado confirma que la recibió.
+          (estado === 'finalizada' ? '<div class="card-aviso-recibir">Ya se compró. Falta que confirmes cuando la recibas.</div>' +
+            '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '') +
+          '<button class="btn-generar-pdf' + (estado === 'finalizada' ? ' btn-card-secundario' : '') + '" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
       }
       cont.appendChild(card);
     });
@@ -1931,7 +1946,9 @@
   // Escucha en Firebase las solicitudes enviadas desde ESTE celular y avisa cuando
   // Compras o Gerencia toman una decisión. La visibilidad no cambia: solo se siguen
   // los documentos cuyo id ya está guardado localmente.
-  const ESTADOS_CERRADOS = ['finalizada', 'rechazada', 'registrada'];
+  // "finalizada" (compra realizada) ya no cambia desde afuera: el paso que sigue, confirmar
+  // la recepción, lo da el propio encargado desde este celular. Por eso no hace falta seguirla.
+  const ESTADOS_CERRADOS = ['finalizada', 'recibida', 'rechazada', 'registrada'];
   const MAX_SEGUIMIENTO = 25;
 
   const ESTADOS_ENCARGADO = {
@@ -1940,6 +1957,7 @@
     aprobada: { texto: 'Aprobada por Gerencia', clase: 'chip-ok' },
     rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
     finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    recibida: { texto: 'Recibida', clase: 'chip-ok' },
     informada: { texto: 'Informada a Compras', clase: 'chip-accion' },
     registrada: { texto: 'Registrada por Compras', clase: 'chip-fin' }
   };
@@ -1966,7 +1984,7 @@
     const nombre = s.tipo === 'urgencia' ? s.detalle : tituloDe(s);
     if (estado === 'en_gerencia') return 'Compras presupuestó "' + nombre + '" y pasó a Gerencia';
     if (estado === 'aprobada') return 'Gerencia aprobó "' + nombre + '"';
-    if (estado === 'finalizada') return 'Ya se realizó la compra de "' + nombre + '"';
+    if (estado === 'finalizada') return 'Ya se realizó la compra de "' + nombre + '". Confirmá la recepción cuando la recibas.';
     if (estado === 'registrada') return 'Compras registró tu compra de urgencia "' + nombre + '"';
     if (estado === 'rechazada') {
       return (s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia') + ' rechazó "' + nombre + '"';
@@ -2074,6 +2092,71 @@
     if (cambio && tabActual === 'historial') await renderHistorial();
   }
 
+  // ---------- Confirmar recepción (encargado) ----------
+  // Cierra el circuito: finalizada -> recibida. Solo se puede desde el celular que cargó
+  // la orden, porque el botón está en su Historial.
+  function marcarRecibidaLocal(id, fecha, nombre) {
+    [cacheSolicitudes.get(id), seguimientoLocal.get(id)].forEach(function(s) {
+      if (!s) return;
+      s.estadoRemoto = 'recibida';
+      s.vistoEstado = 'recibida';
+      s.recibidaLocal = fecha;          // día de la recepción, en hora local (AAAA-MM-DD)
+      s.recibidaPorNombre = nombre;     // encargado que recibe
+    });
+    const s = cacheSolicitudes.get(id) || seguimientoLocal.get(id);
+    return s ? guardarLocal(s).catch(function() { /* se vuelve a leer al reabrir */ }) : Promise.resolve();
+  }
+
+  async function confirmarRecepcion(id) {
+    const s = cacheSolicitudes.get(id);
+    if (!s || !usuarioActual) return;
+    const ok = await pedirConfirmacion('Confirmar recepción',
+      '¿Confirmás que ya recibiste ' + tituloDe(s) + ' (' + s.eess + ')?\nDespués de confirmar no se puede deshacer.', 'Confirmar');
+    if (!ok) return;
+
+    const botones = document.querySelectorAll('#listaHistorial .btn-recibir');
+    botones.forEach(function(b) { b.disabled = true; });
+    const ref = db.collection('solicitudes').doc(id);
+    // Quién recibe: el encargado que hoy tiene asignada esa estación. Los nueve comparten
+    // el usuario, así que el nombre sale de la lista de estaciones y no del correo.
+    let nombre = encargadoDeEstacion(s.eess) || s.encargado || '';
+    let fecha = hoyISO();
+    try {
+      await ref.update({
+        estado: 'recibida',
+        recibidaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        recibidaPor: usuarioActual.email,
+        recibidaPorNombre: nombre
+      });
+    } catch (err) {
+      // Puede fallar porque ya estaba confirmada (por ejemplo, se confirmó pero el celular
+      // no llegó a anotarlo). Se mira cómo está en el servidor antes de avisar un error.
+      let yaRecibida = false;
+      try {
+        const snap = await ref.get();
+        const remoto = snap.exists ? (snap.data() || {}) : {};
+        yaRecibida = remoto.estado === 'recibida';
+        if (yaRecibida) {
+          if (remoto.recibidaPorNombre) nombre = remoto.recibidaPorNombre;
+          if (remoto.recibidaEn && typeof remoto.recibidaEn.toDate === 'function') {
+            const d = remoto.recibidaEn.toDate();
+            fecha = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          }
+        }
+      } catch (e) { /* sin conexión: se informa el error original */ }
+      if (!yaRecibida) {
+        botones.forEach(function(b) { b.disabled = false; });
+        await mostrarAviso('No se pudo confirmar', mensajeErrorEnvio(err).replace('el envío', 'la confirmación').replace('No se pudo enviar', 'No se pudo confirmar') +
+          '\nLa orden sigue como "Compra realizada". Probá de nuevo.');
+        return;
+      }
+    }
+    await marcarRecibidaLocal(id, fecha, nombre);
+    actualizarBadgeHistorial();
+    await renderHistorial();
+    mostrarToast('Recepción confirmada.');
+  }
+
   // ---------- PDF ----------
   function generarPDFOrden(solicitud) {
     const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
@@ -2159,7 +2242,7 @@
       doc.setFont(undefined, 'normal');
       presus.forEach(function(p, i) {
         if (y > 275) { doc.addPage(); y = 20; }
-        const elegido = solicitud.presupuestoElegido === i && (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada');
+        const elegido = solicitud.presupuestoElegido === i && fueAprobada(solicitud.estado);
         const txt = (i + 1) + '. ' + p.proveedor + ' — ' + formatoPesos(p.monto) +
           (p.observaciones ? ' (' + p.observaciones + ')' : '') + (elegido ? '   [APROBADO]' : '');
         const lineas = doc.splitTextToSize(txt, 175);
@@ -2168,7 +2251,7 @@
       });
     }
 
-    if (solicitud.estado === 'aprobada' || solicitud.estado === 'finalizada') {
+    if (fueAprobada(solicitud.estado)) {
       y += 2;
       linea('Resolución de Gerencia', 'Aprobada' + (solicitud.resueltaEn ? ' el ' + fechaDeTimestamp(solicitud.resueltaEn) : ''));
     }
@@ -2177,8 +2260,16 @@
       linea(solicitud.rechazadaPor === 'compras' ? 'Rechazada por Compras' : 'Resolución de Gerencia',
         (solicitud.rechazadaPor === 'compras' ? '' : 'Rechazada — ') + (solicitud.motivoRechazo || ''));
     }
-    if (solicitud.estado === 'finalizada') {
+    if (compraHecha(solicitud.estado)) {
       linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''));
+    }
+    // Recepción. En los paneles el dato viene de Firebase (estado); en el celular del
+    // encargado viene de lo que quedó guardado al confirmar (estadoRemoto).
+    if (solicitud.estado === 'recibida' || solicitud.estadoRemoto === 'recibida') {
+      const fechaRecepcion = solicitud.recibidaEn ? fechaDeTimestamp(solicitud.recibidaEn) : fechaCorta(solicitud.recibidaLocal);
+      y += 2;
+      linea('Orden recibida', fechaRecepcion ? 'Sí, el ' + fechaRecepcion : 'Sí');
+      linea('Recibida por', solicitud.recibidaPorNombre || solicitud.encargado || '-');
     }
 
     y += 6;
@@ -2365,9 +2456,14 @@
     aprobada: { texto: 'Aprobada · realizar compra', clase: 'chip-ok' },
     rechazada: { texto: 'Rechazada', clase: 'chip-rechazo' },
     finalizada: { texto: 'Compra realizada', clase: 'chip-fin' },
+    recibida: { texto: 'Recibida por el encargado', clase: 'chip-ok' },
     informada: { texto: 'Sin registrar', clase: 'chip-accion' },
     registrada: { texto: 'Registrada', clase: 'chip-fin' }
   };
+
+  // El circuito de una compra normal termina en: aprobada -> finalizada (compra realizada) -> recibida.
+  function fueAprobada(estado) { return estado === 'aprobada' || estado === 'finalizada' || estado === 'recibida'; }
+  function compraHecha(estado) { return estado === 'finalizada' || estado === 'recibida'; }
 
   let desuscribir = [];
   let datosSolicitudes = [];
@@ -2464,6 +2560,7 @@
         if (usuarioActual.rol === 'compras') {
           if (s.estado === 'pendiente_compras' && !estadosPrevios[s.id]) mostrarToast('Nueva solicitud: ' + tituloDe(s) + ' (' + s.eess + ')');
           if (s.estado === 'aprobada') mostrarToast('Gerencia aprobó: ' + tituloDe(s) + ' (' + s.eess + ')');
+          if (s.estado === 'recibida') mostrarToast('El encargado confirmó la recepción: ' + tituloDe(s) + ' (' + s.eess + ')');
           if (s.estado === 'rechazada' && s.rechazadaPor !== 'compras') mostrarToast('Gerencia rechazó: ' + tituloDe(s) + ' (' + s.eess + ')');
         }
         if (usuarioActual.rol === 'gerencia' && s.estado === 'en_gerencia') {
@@ -2540,7 +2637,7 @@
     if (rol === 'compras') {
       const requierenAccion = todas.filter(s => s.estado === 'pendiente_compras' || s.estado === 'aprobada');
       const enEspera = todas.filter(s => s.estado === 'en_gerencia');
-      const cerradas = todas.filter(s => s.estado === 'finalizada' || s.estado === 'rechazada');
+      const cerradas = todas.filter(s => compraHecha(s.estado) || s.estado === 'rechazada');
       llenarLista('listaCSolicitudes', requierenAccion.concat(enEspera), tarjetaSolicitud, 'No hay solicitudes en curso.');
       llenarLista('listaCHistorial', cerradas, tarjetaSolicitud, 'Todavía no hay órdenes cerradas.');
       ponerBadge('badgeCSolicitudes', requierenAccion.length);
@@ -2554,7 +2651,7 @@
 
     if (rol === 'gerencia') {
       const porAprobar = todas.filter(s => s.estado === 'en_gerencia');
-      const resueltas = todas.filter(s => ['aprobada', 'rechazada', 'finalizada'].indexOf(s.estado) !== -1);
+      const resueltas = todas.filter(s => fueAprobada(s.estado) || s.estado === 'rechazada');
       llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
       llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no hay órdenes resueltas.');
       ponerBadge('badgeGPorAprobar', porAprobar.length);
@@ -2630,7 +2727,7 @@
       html += '<p class="detalle-nota">' + (editable ? 'Todavía no cargaste presupuestos.' : 'Sin presupuestos cargados.') + '</p>';
     }
     presupuestos.forEach(function(p, i) {
-      const elegido = s.presupuestoElegido === i && (s.estado === 'aprobada' || s.estado === 'finalizada');
+      const elegido = s.presupuestoElegido === i && fueAprobada(s.estado);
       html += '<label class="presu' + (elegido ? ' presu-elegido' : '') + '">' +
         (eligiendo ? '<input type="radio" name="g_presu" value="' + i + '">' : '') +
         '<div class="presu-info">' +
@@ -2677,7 +2774,7 @@
         '<span>Motivo: ' + escaparHTML(s.motivoRechazo) + '</span>' +
         '<span>La orden quedó cerrada. Si hace falta, el encargado tiene que generar una nueva.</span></div>';
     }
-    if (s.estado === 'aprobada' || s.estado === 'finalizada') {
+    if (fueAprobada(s.estado)) {
       html += '<div class="detalle-resolucion ok"><b>Aprobada por Gerencia' + (s.resueltaEn ? ' el ' + fechaDeTimestamp(s.resueltaEn) : '') + '</b></div>';
     }
     if (s.estado === 'aprobada' && rol === 'compras') {
@@ -2688,9 +2785,16 @@
     if (s.estado === 'aprobada' && rol === 'gerencia') {
       html += '<p class="detalle-info">Compras tiene que realizar la compra.</p>';
     }
-    if (s.estado === 'finalizada') {
+    if (compraHecha(s.estado)) {
       html += '<div class="detalle-resolucion fin"><b>Compra realizada' + (s.finalizadaEn ? ' el ' + fechaDeTimestamp(s.finalizadaEn) : '') + '</b>' +
         (s.notaCompra ? '<span>Nota: ' + escaparHTML(s.notaCompra) + '</span>' : '') + '</div>';
+    }
+    if (s.estado === 'finalizada') {
+      html += '<p class="detalle-info">Falta que el encargado confirme la recepción.</p>';
+    }
+    if (s.estado === 'recibida') {
+      html += '<div class="detalle-resolucion ok"><b>Orden recibida' + (s.recibidaEn ? ' el ' + fechaDeTimestamp(s.recibidaEn) : '') + '</b>' +
+        '<span>Recibida por: ' + escaparHTML(s.recibidaPorNombre || s.encargado || 'el encargado') + '</span></div>';
     }
 
     cuerpo.innerHTML = html;
