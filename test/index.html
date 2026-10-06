@@ -8,12 +8,19 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<!-- iPhone / iPad: con estas etiquetas, "Agregar a inicio" deja un ícono propio y la app abre
+     a pantalla completa, sin la barra del navegador. En Android no cambian nada.
+     El ícono es relativo, así que cada carpeta usa el suyo (el de test/ es la "T"). -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="OC Solicitudes">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script>
   // ===== Versión =====
   // Se muestra en la pantalla de ingreso y arriba a la izquierda dentro de la app, para
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // 2.M.C, donde M es la mejora en curso y C el número de corrección dentro de esa mejora.
-  var VERSION_APP = '2.2.0';
+  var VERSION_APP = '2.3.0';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -28,6 +35,22 @@
   if (ES_PRUEBA) {
     document.documentElement.className += ' entorno-prueba';
     document.title = 'PRUEBA · OC Solicitudes';
+    // Nombre que el iPhone le pone al ícono cuando se agrega a la pantalla de inicio.
+    var metaTituloIOS = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (metaTituloIOS) metaTituloIOS.setAttribute('content', 'OC Prueba');
+  }
+
+  // ===== iPhone / iPad =====
+  // En iPhone no hay APK: la app se instala desde el navegador con Compartir > Agregar a inicio.
+  // Todo lo que depende de ES_IOS solo actúa en iPhone o iPad; en Android nada cambia.
+  //   ES_IOS         -> el dispositivo es un iPhone o iPad (cualquier navegador).
+  //   IOS_INSTALADA  -> además, se abrió desde el ícono de la pantalla de inicio.
+  var ES_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var IOS_INSTALADA = ES_IOS && (navigator.standalone === true ||
+    !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+  if (ES_IOS) {
+    document.documentElement.className += IOS_INSTALADA ? ' es-ios ios-instalada' : ' es-ios ios-navegador';
   }
 </script>
 <style>
@@ -613,6 +636,40 @@
   #loginScreen .version-app { margin-top:8px; }
   .version-header { position:absolute; left:12px; top:50%; transform:translateY(-50%); }
 
+  /* ---------- iPhone / iPad ---------- */
+  /* Aviso para instalar: solo se ve en iPhone cuando la app se abrió desde el navegador
+     y todavía no desde el ícono de la pantalla de inicio. */
+  .aviso-ios { display:none; }
+  html.ios-navegador .aviso-ios {
+    display:flex; flex-direction:column; gap:6px;
+    width:100%; max-width:420px; margin-top:6px;
+    padding:12px 14px; border:1px solid var(--gold-dark); border-radius:10px;
+    background: var(--bg-card); color: var(--text-dim);
+    font-size:13px; line-height:1.45; text-align:left;
+  }
+  .aviso-ios strong { color: var(--gold); font-size:14px; letter-spacing:0.3px; }
+  .aviso-ios b { color: var(--text); font-weight:600; }
+  .aviso-ios .aviso-ios-nota { font-size:12px; color:#7d7d7d; }
+
+  /* Barra de respaldo: aparece solo si el iPhone no dejó abrir la hoja de Compartir. */
+  .barra-pdf {
+    display:none; position:fixed; left:12px; right:12px;
+    bottom:calc(78px + env(safe-area-inset-bottom, 0px)); z-index:1300;
+    align-items:center; gap:10px;
+    background:#2a2416; border:1px solid var(--gold); border-radius:10px;
+    padding:10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+    color: var(--gold-light); font-size:13px;
+  }
+  .barra-pdf.visible { display:flex; }
+  .barra-pdf span { flex:1; }
+  .barra-pdf .barra-pdf-accion {
+    background: var(--gold-metal); color:#121212; border:none; border-radius:8px;
+    padding:9px 12px; font-size:13px; font-weight:700; font-family:inherit;
+  }
+  .barra-pdf .barra-pdf-cerrar {
+    background:none; border:none; color: var(--text-dim); font-size:22px; line-height:1; padding:2px 6px;
+  }
+
   /* ---------- Entorno de prueba ---------- */
   /* Todo este bloque solo actúa cuando la página se abre desde /test/.
      En la app real la franja no existe y nada de la disposición cambia. */
@@ -655,6 +712,11 @@
       </div>
       <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
       <div id="loginError"></div>
+    </div>
+    <div id="avisoInstalarIOS" class="aviso-ios">
+      <strong>Instalá la app en tu iPhone</strong>
+      <span>Tocá <b>Compartir</b> (el cuadrado con la flecha hacia arriba) y elegí <b>Agregar a inicio</b>. Después entrá siempre desde ese ícono.</span>
+      <span class="aviso-ios-nota">Si no aparece esa opción, abrí esta dirección en Safari.</span>
     </div>
     <div class="version-app" id="versionLogin"></div>
   </div>
@@ -1410,7 +1472,9 @@
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      estado.textContent = 'El dictado por voz solo funciona en Chrome.';
+      estado.textContent = ES_IOS
+        ? 'En este iPhone el dictado de la app no está disponible. Podés dictar campo por campo con el micrófono del teclado.'
+        : 'El dictado por voz solo funciona en Chrome.';
       estado.className = 'msg error';
       return;
     }
@@ -1438,7 +1502,8 @@
     };
 
     reconocimientoVoz.onerror = function(event) {
-      estado.textContent = 'No se pudo escuchar: ' + event.error;
+      estado.textContent = 'No se pudo escuchar: ' + event.error +
+        (ES_IOS ? '. Podés dictar campo por campo con el micrófono del teclado.' : '');
       estado.className = 'msg error';
     };
 
@@ -1447,7 +1512,15 @@
       reconocimientoVoz = null;
     };
 
-    reconocimientoVoz.start();
+    try {
+      reconocimientoVoz.start();
+    } catch (err) {
+      btn.classList.remove('grabando');
+      reconocimientoVoz = null;
+      estado.textContent = 'No se pudo iniciar el dictado: ' + err.message +
+        (ES_IOS ? '. Podés dictar campo por campo con el micrófono del teclado.' : '');
+      estado.className = 'msg error';
+    }
   }
 
   // ---------- Guardado local en el celular (IndexedDB) ----------
@@ -1463,7 +1536,9 @@
     if (dbPromesa) return dbPromesa;
     const promesa = new Promise(function(resolve, reject) {
       if (!window.indexedDB) {
-        reject(new Error('Este navegador no permite guardar datos. Usá Chrome.'));
+        reject(new Error(ES_IOS
+          ? 'Este navegador no permite guardar datos. Abrí la app desde el ícono de inicio o desde Safari, sin navegación privada.'
+          : 'Este navegador no permite guardar datos. Usá Chrome.'));
         return;
       }
       const req = indexedDB.open(DB_NOMBRE, 1);
@@ -2296,8 +2371,66 @@
       doc.setFont(undefined, 'normal');
     }
 
-    doc.save('orden-de-compra-' + solicitud.id + '.pdf');
+    const nombrePDF = 'orden-de-compra-' + solicitud.id + '.pdf';
+    // En iPhone el PDF no se descarga solo: se abre la hoja de Compartir del teléfono.
+    if (ES_IOS && entregarPDFenIOS(doc, nombrePDF)) return;
+    doc.save(nombrePDF);
   }
+
+  // ---------- PDF en iPhone / iPad ----------
+  // En iPhone la descarga directa de un archivo generado por la app no es confiable, y menos
+  // cuando se abrió desde el ícono de la pantalla de inicio. Por eso el PDF se entrega con la hoja
+  // de Compartir del teléfono (Guardar en Archivos, WhatsApp, Mail, Imprimir...).
+  // Si el iPhone no ofrece compartir archivos, devuelve false y se usa la descarga de siempre.
+  let pdfIOS = null;
+
+  function entregarPDFenIOS(doc, nombre) {
+    let archivo;
+    try {
+      archivo = new File([doc.output('blob')], nombre, { type: 'application/pdf' });
+      if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [archivo] })) return false;
+    } catch (e) {
+      return false;
+    }
+    pdfIOS = { archivo: archivo, doc: doc, nombre: nombre };
+    compartirPDFIOS(true);
+    return true;
+  }
+
+  // primerIntento: true cuando se llama al generar el PDF; false cuando el usuario toca
+  // "Compartir o guardar" en la barra de respaldo.
+  function compartirPDFIOS(primerIntento) {
+    const actual = pdfIOS;
+    if (!actual) { ocultarBarraPDF(); return; }
+    ocultarBarraPDF();
+    let intento;
+    try {
+      intento = navigator.share({ files: [actual.archivo] });
+    } catch (e) {
+      intento = Promise.reject(e);
+    }
+    Promise.resolve(intento).then(function() {
+      if (pdfIOS === actual) pdfIOS = null;
+    }).catch(function(err) {
+      // Cerró la hoja sin elegir nada: no es un error. El PDF sigue disponible con su botón.
+      if (err && err.name === 'AbortError') {
+        if (pdfIOS === actual) pdfIOS = null;
+        return;
+      }
+      // El iPhone no dejó abrir la hoja en este momento: se ofrece un botón para reintentar.
+      if (primerIntento) { mostrarBarraPDF(); return; }
+      // Tampoco con el botón: último recurso, la descarga de siempre.
+      if (pdfIOS === actual) pdfIOS = null;
+      try {
+        actual.doc.save(actual.nombre);
+      } catch (e) {
+        mostrarToast('No se pudo abrir el PDF: ' + e.message, true);
+      }
+    });
+  }
+
+  function mostrarBarraPDF() { document.getElementById('barraPDF').classList.add('visible'); }
+  function ocultarBarraPDF() { document.getElementById('barraPDF').classList.remove('visible'); }
 
   // ---------- Firma ----------
   let firmaCtx = null;
@@ -2422,7 +2555,7 @@
       solicitud.firma = null;
       botones.forEach(b => { b.disabled = false; });
       await mostrarAviso('No se envió a Compras',
-        'El PDF se descargó, pero la solicitud no llegó a Compras.\n' + mensajeErrorEnvio(err) +
+        (ES_IOS ? 'El PDF se generó' : 'El PDF se descargó') + ', pero la solicitud no llegó a Compras.\n' + mensajeErrorEnvio(err) +
         '\nQueda en "Generadas" para que la vuelvas a firmar y enviar.');
       return;
     }
@@ -2434,7 +2567,9 @@
     await renderGeneradas();
     await renderHistorial();
     iniciarSeguimientoHistorial();
-    await mostrarAviso('Enviada a Compras', 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
+    await mostrarAviso('Enviada a Compras', ES_IOS
+      ? 'La orden de compra ya le llegó a Compras. Si no guardaste el PDF, podés compartirlo o guardarlo desde Historial.'
+      : 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
   }
 
   function descargarPDFDeNuevo(id) {
@@ -3029,6 +3164,12 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <div id="barraPDF" class="barra-pdf" role="status">
+    <span>El PDF está listo.</span>
+    <button type="button" class="barra-pdf-accion" onclick="compartirPDFIOS(false)">Compartir o guardar</button>
+    <button type="button" class="barra-pdf-cerrar" onclick="ocultarBarraPDF()" aria-label="Cerrar">&times;</button>
+  </div>
 
 </body>
 </html>
