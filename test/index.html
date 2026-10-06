@@ -19,8 +19,9 @@
   // ===== Versión =====
   // Se muestra en la pantalla de ingreso y arriba a la izquierda dentro de la app, para
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
-  // 2.M.C, donde M es la mejora en curso y C el número de corrección dentro de esa mejora.
-  var VERSION_APP = '2.4.0';
+  // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
+  // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
+  var VERSION_APP = '2.4.1';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -874,7 +875,22 @@
 
       <!-- ===== Gerencia ===== -->
       <div id="tab-gPorAprobar" class="tab-content"><div id="listaGPorAprobar"></div></div>
-      <div id="tab-gHistorial" class="tab-content"><div id="listaGHistorial"></div></div>
+      <div id="tab-gHistorial" class="tab-content">
+        <!-- Gerencia ve en su Historial las órdenes que resolvió y, aparte, las compras de
+             urgencia que informaron los encargados (solo para consultar). -->
+        <div class="selector-modo">
+          <button type="button" id="btnGHOrdenes" class="activo" onclick="verHistorialGerencia('ordenes')">
+            Órdenes
+            <small id="gHCuentaOrdenes">&nbsp;</small>
+          </button>
+          <button type="button" id="btnGHUrgencias" onclick="verHistorialGerencia('urgencias')">
+            Urgencias
+            <small id="gHCuentaUrgencias">&nbsp;</small>
+          </button>
+        </div>
+        <div id="listaGHistorial"></div>
+        <div id="listaGUrgencias" style="display:none"></div>
+      </div>
     </main>
     <nav class="bottom-nav" id="navEncargado">
       <button id="nav-inicio" class="active" onclick="mostrarTab('inicio')">
@@ -2757,9 +2773,19 @@
     datosUrgencias = [];
     estadosPrevios = null;
     urgenciasPrevias = null;
-    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial'].forEach(function(id) {
+    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial', 'listaGUrgencias'].forEach(function(id) {
       document.getElementById(id).innerHTML = '<p class="placeholder">Cargando...</p>';
     });
+    verHistorialGerencia('ordenes');
+  }
+
+  // Historial de Gerencia: alterna entre las órdenes resueltas y las compras de urgencia.
+  function verHistorialGerencia(vista) {
+    const urgencias = vista === 'urgencias';
+    document.getElementById('btnGHOrdenes').classList.toggle('activo', !urgencias);
+    document.getElementById('btnGHUrgencias').classList.toggle('activo', urgencias);
+    document.getElementById('listaGHistorial').style.display = urgencias ? 'none' : 'block';
+    document.getElementById('listaGUrgencias').style.display = urgencias ? 'block' : 'none';
   }
 
   function entrarComoCompras() {
@@ -2771,6 +2797,8 @@
   function entrarComoGerencia() {
     prepararPanel('gerencia');
     escucharSolicitudes();
+    // Gerencia también ve las compras de urgencia, solo para consultarlas.
+    escucharUrgencias();
   }
 
   function detenerEscuchas() {
@@ -2855,7 +2883,10 @@
     '</div>';
   }
 
-  function tarjetaUrgencia(u) {
+  // soloLectura: para Gerencia, que consulta las urgencias pero no las registra.
+  function tarjetaUrgenciaLectura(u) { return tarjetaUrgencia(u, true); }
+
+  function tarjetaUrgencia(u, soloLectura) {
     return '<div class="card">' +
       '<div class="card-top">' +
         '<span class="card-title">' + escaparHTML(u.detalle) + '</span>' +
@@ -2866,7 +2897,7 @@
       '<div class="card-row">Comprobante: ' + escaparHTML(u.comprobante) + '</div>' +
       '<div class="card-row card-motivo">Motivo: ' + escaparHTML(u.motivo) + '</div>' +
       '<div class="card-pie">' + chipEstado(u.estado) + '</div>' +
-      (u.estado === 'informada'
+      (u.estado === 'informada' && soloLectura !== true
         ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
         : '') +
     '</div>';
@@ -2905,6 +2936,11 @@
       llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
       llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no hay órdenes resueltas.');
       ponerBadge('badgeGPorAprobar', porAprobar.length);
+
+      const urgG = datosUrgencias.slice().sort(porCreadaDesc);
+      llenarLista('listaGUrgencias', urgG, tarjetaUrgenciaLectura, 'No hay compras de urgencia informadas.');
+      document.getElementById('gHCuentaOrdenes').textContent = resueltas.length === 1 ? '1 resuelta' : resueltas.length + ' resueltas';
+      document.getElementById('gHCuentaUrgencias').textContent = urgG.length === 1 ? '1 informada' : urgG.length + ' informadas';
     }
 
     if (idDetalleAbierto) renderDetalle();
