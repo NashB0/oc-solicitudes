@@ -20,7 +20,7 @@
   // Se muestra en la pantalla de ingreso y arriba a la izquierda dentro de la app, para
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // 2.M.C, donde M es la mejora en curso y C el número de corrección dentro de esa mejora.
-  var VERSION_APP = '2.3.0';
+  var VERSION_APP = '2.4.0';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -424,6 +424,12 @@
     text-transform:uppercase;
     text-align:center;
   }
+  .firma-resumen {
+    display:none;
+    color: var(--text); font-size:14px; line-height:1.45; text-align:center; white-space:pre-line;
+    max-width:480px;
+  }
+  .firma-resumen.visible { display:block; }
   .firma-wrap {
     width:100%;
     max-width:480px;
@@ -2011,7 +2017,7 @@
           // Último paso del circuito: cuando Compras ya realizó la compra, el encargado confirma que la recibió.
           (estado === 'finalizada' ? '<div class="card-aviso-recibir">Ya se compró. Falta que confirmes cuando la recibas.</div>' +
             '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '') +
-          '<button class="btn-generar-pdf' + (estado === 'finalizada' ? ' btn-card-secundario' : '') + '" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
+          '<button class="btn-generar-pdf' + (estado === 'finalizada' ? ' btn-card-secundario' : '') + '" onclick="descargarPDFDeNuevo(\'' + s.id + '\', this)">' + (estado === 'recibida' ? 'Descargar PDF final' : 'Descargar PDF de nuevo') + '</button>';
       }
       cont.appendChild(card);
     });
@@ -2196,6 +2202,7 @@
     // el usuario, así que el nombre sale de la lista de estaciones y no del correo.
     let nombre = encargadoDeEstacion(s.eess) || s.encargado || '';
     let fecha = hoyISO();
+    let copiaYaLeida = null;
     try {
       await ref.update({
         estado: 'recibida',
@@ -2212,6 +2219,7 @@
         const remoto = snap.exists ? (snap.data() || {}) : {};
         yaRecibida = remoto.estado === 'recibida';
         if (yaRecibida) {
+          copiaYaLeida = remoto;
           if (remoto.recibidaPorNombre) nombre = remoto.recibidaPorNombre;
           if (remoto.recibidaEn && typeof remoto.recibidaEn.toDate === 'function') {
             const d = remoto.recibidaEn.toDate();
@@ -2227,9 +2235,15 @@
       }
     }
     await marcarRecibidaLocal(id, fecha, nombre);
+    // Se guarda la orden tal como quedó en Firebase: con eso el encargado descarga el mismo
+    // PDF final que Compras y Gerencia. Si justo falla, se vuelve a pedir al descargar.
+    try {
+      if (copiaYaLeida) await guardarCopiaFinal(id, copiaYaLeida);
+      else await conLimite(traerOrdenFinal(id), 5000);
+    } catch (e) { /* queda para la primera descarga */ }
     actualizarBadgeHistorial();
     await renderHistorial();
-    mostrarToast('Recepción confirmada.');
+    mostrarToast('Recepción confirmada. Ya podés descargar el PDF final.');
   }
 
   // ---------- PDF ----------
@@ -2349,23 +2363,29 @@
 
     y += 6;
 
-    if (solicitud.firma) {
+    // Firmas: la del encargado a la izquierda y, si Gerencia aprobó firmando, la suya a la derecha.
+    if (solicitud.firma || solicitud.firmaGerencia) {
       if (y > 230) { doc.addPage(); y = 20; }
       y += 4;
-      doc.setFont(undefined, 'bold');
-      doc.text('Firma del Encargado:', 15, y);
-      y += 4;
-      try {
-        doc.addImage(solicitud.firma, 'PNG', 15, y, 70, 30);
-      } catch (e) {
-        // si la firma falla, seguimos sin bloquear el resto del PDF
-      }
-      y += 30;
-      doc.setDrawColor(150, 150, 150);
-      doc.line(15, y, 85, y);
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text(solicitud.encargado || '', 15, y + 5);
+      const firmaEnPDF = function(x, titulo, imagen, pie) {
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'bold');
+        doc.text(titulo, x, y);
+        try {
+          doc.addImage(imagen, 'PNG', x, y + 4, 70, 30, undefined, 'FAST');
+        } catch (e) {
+          // si la firma falla, seguimos sin bloquear el resto del PDF
+        }
+        doc.setDrawColor(150, 150, 150);
+        doc.line(x, y + 34, x + 70, y + 34);
+        doc.setFontSize(9);
+        doc.setTextColor(90, 90, 90);
+        doc.text(pie, x, y + 39);
+      };
+      if (solicitud.firma) firmaEnPDF(15, 'Firma del Encargado:', solicitud.firma, solicitud.encargado || '');
+      if (solicitud.firmaGerencia) firmaEnPDF(110, 'Firma de Gerencia:', solicitud.firmaGerencia, 'Gerencia');
+      y += 34;
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
       doc.setFont(undefined, 'normal');
@@ -2437,8 +2457,30 @@
   let firmaDibujando = false;
   let firmaTieneTrazo = false;
   let idPendienteFirma = null;
+  // El mismo recuadro de firma sirve para dos cosas:
+  //   - el encargado firma para enviar la orden (abrirFirma), y
+  //   - Gerencia firma para aprobarla (pedirFirma, que devuelve la firma o null si cancela).
+  let firmaResolver = null;
+
+  function textosFirma(titulo, resumen, boton) {
+    document.getElementById('firmaTitulo').textContent = titulo;
+    const r = document.getElementById('firmaResumen');
+    r.textContent = resumen || '';
+    r.classList.toggle('visible', !!resumen);
+    document.getElementById('btnFirmaConfirmar').textContent = boton;
+  }
+
+  function pedirFirma(titulo, resumen, boton) {
+    return new Promise(function(resolve) {
+      abrirFirma(null);
+      textosFirma(titulo, resumen, boton);
+      firmaResolver = resolve;
+    });
+  }
 
   function abrirFirma(id) {
+    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(null); }
+    textosFirma('Firmá para enviar la orden', '', 'Confirmar y enviar');
     idPendienteFirma = id;
     const canvas = document.getElementById('canvasFirma');
     firmaCtx = canvas.getContext('2d');
@@ -2455,6 +2497,7 @@
   function cerrarFirma() {
     document.getElementById('modalFirma').style.display = 'none';
     idPendienteFirma = null;
+    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(null); }
   }
 
   function limpiarFirma() {
@@ -2508,6 +2551,8 @@
     const id = idPendienteFirma;
     document.getElementById('modalFirma').style.display = 'none';
     idPendienteFirma = null;
+    // Firma pedida por Gerencia para aprobar: se devuelve a quien la pidió.
+    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(firmaDataUrl); return; }
     procesarEnvioConFirma(id, firmaDataUrl);
   }
 
@@ -2572,13 +2617,83 @@
       : 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
   }
 
-  function descargarPDFDeNuevo(id) {
+  // ---------- PDF final para el encargado ----------
+  // Cuando la orden ya fue recibida, el PDF del encargado tiene que ser el mismo documento
+  // final que ven Compras y Gerencia (presupuestos, aprobación, compra, recepción y firmas).
+  // Para eso el celular guarda una copia de la orden tal como quedó en Firebase ("remoto")
+  // y arma el PDF con esos datos, exactamente los mismos que usan los paneles.
+  // Antes de la recepción, el PDF del encargado sigue siendo el de su solicitud.
+  function fechaLocalISO(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Las fechas de Firebase se pasan a texto (día local) para poder guardarlas en el celular.
+  function copiaRemota(datos) {
+    const copia = {};
+    Object.keys(datos).forEach(function(k) {
+      const v = datos[k];
+      copia[k] = v && typeof v.toDate === 'function' ? fechaLocalISO(v.toDate()) : v;
+    });
+    return copia;
+  }
+
+  function guardarCopiaFinal(id, datos) {
+    const copia = copiaRemota(datos);
+    [cacheSolicitudes.get(id), seguimientoLocal.get(id)].forEach(function(s) { if (s) s.remoto = copia; });
+    const s = cacheSolicitudes.get(id) || seguimientoLocal.get(id);
+    return s ? guardarLocal(s).catch(function() { /* se vuelve a pedir la próxima vez */ }) : Promise.resolve();
+  }
+
+  // Lee la orden de Firebase y guarda la copia, solo si ya está cerrada como recibida
+  // y el dato viene del servidor (no de una lectura a medias sin conexión).
+  async function traerOrdenFinal(id) {
+    const snap = await db.collection('solicitudes').doc(id).get();
+    const meta = snap.metadata || {};
+    const datos = snap.exists ? (snap.data() || {}) : {};
+    if (datos.estado !== 'recibida' || meta.fromCache || meta.hasPendingWrites) {
+      throw new Error('La orden todavía no figura como recibida en el sistema.');
+    }
+    await guardarCopiaFinal(id, datos);
+  }
+
+  function conLimite(promesa, ms) {
+    return Promise.race([promesa, new Promise(function(_, reject) {
+      setTimeout(function() { reject(new Error('tiempo agotado')); }, ms);
+    })]);
+  }
+
+  function tieneCopiaFinal(s) {
+    return !!(s.remoto && s.remoto.estado === 'recibida');
+  }
+
+  function ordenParaPDF(s) {
+    if (estadoActualLocal(s) === 'recibida' && tieneCopiaFinal(s)) return Object.assign({ id: s.id }, s.remoto);
+    return s;
+  }
+
+  async function descargarPDFDeNuevo(id, boton) {
     const solicitud = cacheSolicitudes.get(id);
     if (!solicitud) return;
+    let sinCopiaFinal = false;
+    // Orden recibida sin copia final (por ejemplo, confirmada con una versión anterior):
+    // se pide una sola vez a Firebase. Las siguientes descargas ya son inmediatas.
+    if (estadoActualLocal(solicitud) === 'recibida' && !tieneCopiaFinal(solicitud)) {
+      if (boton) boton.disabled = true;
+      try {
+        await conLimite(traerOrdenFinal(id), 8000);
+      } catch (e) {
+        sinCopiaFinal = true;
+      }
+      if (boton) boton.disabled = false;
+    }
     try {
-      generarPDFOrden(solicitud);
+      generarPDFOrden(ordenParaPDF(solicitud));
     } catch (err) {
       alert('No se pudo generar el PDF: ' + err.message);
+      return;
+    }
+    if (sinCopiaFinal) {
+      mostrarToast('No se pudo traer la orden final (revisá la conexión). Este PDF puede estar incompleto: descargalo de nuevo cuando tengas internet.', true);
     }
   }
 
@@ -3018,12 +3133,15 @@
     }
     const indice = parseInt(marcado.value, 10);
     const p = s.presupuestos[indice];
-    const ok = await pedirConfirmacion('Aprobar orden',
-      tituloDe(s) + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
-    if (!ok) return;
+    // Gerencia aprueba firmando, igual que el encargado al enviar. Sin firma no hay aprobación.
+    // El recuadro de firma muestra qué se está aprobando, así que hace también de confirmación.
+    const firmaGerencia = await pedirFirma('Firmá para aprobar la orden',
+      tituloDe(s) + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Firmar y aprobar');
+    if (!firmaGerencia) return;
     if (await actualizarSolicitud(s.id, {
       estado: 'aprobada',
       presupuestoElegido: indice,
+      firmaGerencia: firmaGerencia,
       resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
       resueltaPor: usuarioActual.email
     }, boton)) {
@@ -3129,7 +3247,8 @@
 </script>
 
   <div id="modalFirma" class="modal-firma">
-    <h2 class="texto-metal">Firmá para enviar la orden</h2>
+    <h2 class="texto-metal" id="firmaTitulo">Firmá para enviar la orden</h2>
+    <p class="firma-resumen" id="firmaResumen"></p>
     <div class="firma-wrap">
       <canvas id="canvasFirma" width="600" height="260"
         onpointerdown="firmaInicio(event)"
@@ -3142,7 +3261,7 @@
     <div class="firma-controles">
       <button type="button" class="btn-secundario" onclick="cerrarFirma()">Cancelar</button>
       <button type="button" class="btn-secundario" onclick="limpiarFirma()">Limpiar</button>
-      <button type="button" class="btn-principal" onclick="confirmarFirma()">Confirmar y enviar</button>
+      <button type="button" class="btn-principal" id="btnFirmaConfirmar" onclick="confirmarFirma()">Confirmar y enviar</button>
     </div>
   </div>
 
