@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.1';
+  var VERSION_APP = '2.4.2';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -657,6 +657,21 @@
   .aviso-ios strong { color: var(--gold); font-size:14px; letter-spacing:0.3px; }
   .aviso-ios b { color: var(--text); font-weight:600; }
   .aviso-ios .aviso-ios-nota { font-size:12px; color:#7d7d7d; }
+
+  /* Campos de fecha en iPhone. Safari los dibuja como un botón propio: ignora el ancho
+     pedido, les suma el relleno por fuera y centra el texto, así que se salían del margen
+     derecho. Con esto se comportan como el resto de los campos. Solo actúa en iPhone/iPad. */
+  html.es-ios form input[type="date"] {
+    -webkit-appearance:none; appearance:none;
+    display:block; box-sizing:border-box;
+    width:100%; max-width:100%; min-width:0;
+    min-height:44px;
+    text-align:left;
+  }
+  html.es-ios form input[type="date"]::-webkit-date-and-time-value {
+    margin:0; text-align:left;
+    min-height:1.2em;
+  }
 
   /* Barra de respaldo: aparece solo si el iPhone no dejó abrir la hoja de Compartir. */
   .barra-pdf {
