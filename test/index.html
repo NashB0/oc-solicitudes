@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.2';
+  var VERSION_APP = '2.4.4';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -528,6 +528,7 @@
     display:inline-block; font-size:10px; padding:3px 8px; border-radius:10px;
     letter-spacing:0.5px; text-transform:uppercase; border:1px solid #444; color: var(--text-dim);
   }
+  .chips-urgencia { display:flex; flex-wrap:wrap; gap:6px; }
   .chip-accion { border-color: var(--gold); color: var(--gold); }
   .chip-espera { border-color:#6b8fd6; color:#9db6ec; }
   .chip-ok { border-color:#58b86a; color:#8fdc9d; }
@@ -2017,7 +2018,10 @@
       cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
       const estado = estadoActualLocal(s);
-      card.className = 'card' + (s.tipo !== 'urgencia' && estado === 'finalizada' ? ' card-por-recibir' : '');
+      // Falta confirmar la recepción: una orden con la compra ya realizada, o una compra de
+      // urgencia que el encargado informó y todavía no marcó como recibida.
+      const faltaRecibir = s.tipo === 'urgencia' ? !s.recibidaLocal : estado === 'finalizada';
+      card.className = 'card' + (faltaRecibir ? ' card-por-recibir' : '');
       let filaRechazo = '';
       if (estado === 'rechazada' && s.motivoRechazo) {
         const quien = s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia';
@@ -2032,7 +2036,11 @@
           '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.encargado) + '</div>' +
           '<div class="card-row">Importe: ' + formatoPesos(s.importe) + '</div>' +
           '<div class="card-row">Proveedor: ' + escaparHTML(s.proveedor) + ' · Comp. ' + escaparHTML(s.comprobante) + '</div>' +
-          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>';
+          (s.recibidaLocal ? '<div class="card-row">Recibida' + (s.recibidaPorNombre ? ' por ' + escaparHTML(s.recibidaPorNombre) : '') + ' el ' + fechaCorta(s.recibidaLocal) + '</div>' : '') +
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
+          // También en las compras de urgencia el encargado confirma que recibió lo comprado.
+          (faltaRecibir ? '<div class="card-aviso-recibir">Falta que confirmes que la recibiste.</div>' +
+            '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '');
       } else {
         card.innerHTML =
           '<div class="card-top">' +
@@ -2192,6 +2200,12 @@
     s.estadoRemoto = nuevo;
     s.motivoRechazo = datos.motivoRechazo || '';
     s.rechazadaPor = datos.rechazadaPor || '';
+    let recepcionNueva = false;
+    if (s.tipo === 'urgencia' && datos.recibidaEn && !s.recibidaLocal) {
+      s.recibidaLocal = typeof datos.recibidaEn.toDate === 'function' ? fechaLocalISO(datos.recibidaEn.toDate()) : hoyISO();
+      s.recibidaPorNombre = datos.recibidaPorNombre || s.encargado || '';
+      recepcionNueva = true;
+    }
 
     const cambio = nuevo !== anterior;
     if (cambio && !(primera && faseInicialHistorial)) {
@@ -2201,7 +2215,7 @@
 
     try { await guardarLocal(s); } catch (e) { /* el estado se vuelve a leer al reabrir */ }
     actualizarBadgeHistorial();
-    if (cambio && tabActual === 'historial') await renderHistorial();
+    if ((cambio || recepcionNueva) && tabActual === 'historial') await renderHistorial();
   }
 
   // ---------- Confirmar recepción (encargado) ----------
@@ -2210,8 +2224,12 @@
   function marcarRecibidaLocal(id, fecha, nombre) {
     [cacheSolicitudes.get(id), seguimientoLocal.get(id)].forEach(function(s) {
       if (!s) return;
-      s.estadoRemoto = 'recibida';
-      s.vistoEstado = 'recibida';
+      // En una orden, recibirla es su último estado. En una compra de urgencia no cambia el
+      // estado (informada / registrada, que lo maneja Compras): solo se anota la recepción.
+      if (s.tipo !== 'urgencia') {
+        s.estadoRemoto = 'recibida';
+        s.vistoEstado = 'recibida';
+      }
       s.recibidaLocal = fecha;          // día de la recepción, en hora local (AAAA-MM-DD)
       s.recibidaPorNombre = nombre;     // encargado que recibe
     });
@@ -2222,25 +2240,29 @@
   async function confirmarRecepcion(id) {
     const s = cacheSolicitudes.get(id);
     if (!s || !usuarioActual) return;
+    const esUrgencia = s.tipo === 'urgencia';
     const ok = await pedirConfirmacion('Confirmar recepción',
-      '¿Confirmás que ya recibiste ' + tituloDe(s) + ' (' + s.eess + ')?\nDespués de confirmar no se puede deshacer.', 'Confirmar');
+      '¿Confirmás que ya recibiste ' + (esUrgencia ? s.detalle : tituloDe(s)) + ' (' + s.eess + ')?\nDespués de confirmar no se puede deshacer.', 'Confirmar');
     if (!ok) return;
 
     const botones = document.querySelectorAll('#listaHistorial .btn-recibir');
     botones.forEach(function(b) { b.disabled = true; });
-    const ref = db.collection('solicitudes').doc(id);
+    const ref = db.collection(esUrgencia ? 'urgencias' : 'solicitudes').doc(id);
     // Quién recibe: el encargado que hoy tiene asignada esa estación. Los nueve comparten
     // el usuario, así que el nombre sale de la lista de estaciones y no del correo.
     let nombre = encargadoDeEstacion(s.eess) || s.encargado || '';
     let fecha = hoyISO();
     let copiaYaLeida = null;
+    // Orden: pasa a su último estado. Compra de urgencia: solo se agrega la recepción,
+    // sin tocar el estado, que es de Compras (informada / registrada).
+    const cambios = {
+      recibidaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      recibidaPor: usuarioActual.email,
+      recibidaPorNombre: nombre
+    };
+    if (!esUrgencia) cambios.estado = 'recibida';
     try {
-      await ref.update({
-        estado: 'recibida',
-        recibidaEn: firebase.firestore.FieldValue.serverTimestamp(),
-        recibidaPor: usuarioActual.email,
-        recibidaPorNombre: nombre
-      });
+      await ref.update(cambios);
     } catch (err) {
       // Puede fallar porque ya estaba confirmada (por ejemplo, se confirmó pero el celular
       // no llegó a anotarlo). Se mira cómo está en el servidor antes de avisar un error.
@@ -2248,7 +2270,7 @@
       try {
         const snap = await ref.get();
         const remoto = snap.exists ? (snap.data() || {}) : {};
-        yaRecibida = remoto.estado === 'recibida';
+        yaRecibida = esUrgencia ? !!remoto.recibidaEn : remoto.estado === 'recibida';
         if (yaRecibida) {
           copiaYaLeida = remoto;
           if (remoto.recibidaPorNombre) nombre = remoto.recibidaPorNombre;
@@ -2261,20 +2283,22 @@
       if (!yaRecibida) {
         botones.forEach(function(b) { b.disabled = false; });
         await mostrarAviso('No se pudo confirmar', mensajeErrorEnvio(err).replace('el envío', 'la confirmación').replace('No se pudo enviar', 'No se pudo confirmar') +
-          '\nLa orden sigue como "Compra realizada". Probá de nuevo.');
+          (esUrgencia ? '\nLa compra de urgencia sigue sin confirmar. Probá de nuevo.' : '\nLa orden sigue como "Compra realizada". Probá de nuevo.'));
         return;
       }
     }
     await marcarRecibidaLocal(id, fecha, nombre);
-    // Se guarda la orden tal como quedó en Firebase: con eso el encargado descarga el mismo
-    // PDF final que Compras y Gerencia. Si justo falla, se vuelve a pedir al descargar.
-    try {
-      if (copiaYaLeida) await guardarCopiaFinal(id, copiaYaLeida);
-      else await conLimite(traerOrdenFinal(id), 5000);
-    } catch (e) { /* queda para la primera descarga */ }
+    if (!esUrgencia) {
+      // Se guarda la orden tal como quedó en Firebase: con eso el encargado descarga el mismo
+      // PDF final que Compras y Gerencia. Si justo falla, se vuelve a pedir al descargar.
+      try {
+        if (copiaYaLeida) await guardarCopiaFinal(id, copiaYaLeida);
+        else await conLimite(traerOrdenFinal(id), 5000);
+      } catch (e) { /* queda para la primera descarga */ }
+    }
     actualizarBadgeHistorial();
     await renderHistorial();
-    mostrarToast('Recepción confirmada. Ya podés descargar el PDF final.');
+    mostrarToast(esUrgencia ? 'Recepción confirmada. Compras y Gerencia ya lo ven.' : 'Recepción confirmada. Ya podés descargar el PDF final.');
   }
 
   // ---------- PDF ----------
@@ -2865,11 +2889,17 @@
   }
 
   function avisarCambiosUrgencias() {
+    // Se guarda, de cada urgencia, si ya estaba recibida, para avisar cuando eso cambia.
     const actuales = {};
-    datosUrgencias.forEach(function(u) { actuales[u.id] = u.estado; });
+    datosUrgencias.forEach(function(u) { actuales[u.id] = u.recibidaEn ? 'recibida' : 'sin-recibir'; });
     if (urgenciasPrevias) {
       datosUrgencias.forEach(function(u) {
-        if (!urgenciasPrevias[u.id]) mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
+        if (!urgenciasPrevias[u.id]) {
+          mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
+        } else if (urgenciasPrevias[u.id] === 'sin-recibir' && u.recibidaEn) {
+          // Trazabilidad: Compras y Gerencia se enteran cuando el encargado confirma que la recibió.
+          mostrarToast('El encargado confirmó la recepción de la urgencia: ' + u.detalle + ' (' + u.eess + ')');
+        }
       });
     }
     urgenciasPrevias = actuales;
@@ -2911,7 +2941,10 @@
       '<div class="card-row"><b>' + formatoPesos(u.importe) + '</b> · ' + escaparHTML(u.proveedor) + '</div>' +
       '<div class="card-row">Comprobante: ' + escaparHTML(u.comprobante) + '</div>' +
       '<div class="card-row card-motivo">Motivo: ' + escaparHTML(u.motivo) + '</div>' +
-      '<div class="card-pie">' + chipEstado(u.estado) + '</div>' +
+      (u.recibidaEn ? '<div class="card-row">Recibida' + (u.recibidaPorNombre ? ' por ' + escaparHTML(u.recibidaPorNombre) : '') + ' el ' + fechaDeTimestamp(u.recibidaEn) + '</div>' : '') +
+      // dos datos independientes: si Compras ya la registró y si el encargado confirmó que la recibió
+      '<div class="card-pie"><span class="chips-urgencia">' + chipEstado(u.estado) +
+        (u.recibidaEn ? '<span class="chip chip-ok">Recibida</span>' : '<span class="chip chip-espera">Falta recibir</span>') + '</span></div>' +
       (u.estado === 'informada' && soloLectura !== true
         ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
         : '') +
