@@ -8,20 +8,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<!-- iPhone / iPad: con estas etiquetas, "Agregar a inicio" deja un ícono propio y la app abre
-     a pantalla completa, sin la barra del navegador. En Android no cambian nada.
-     El ícono es relativo, así que cada carpeta usa el suyo (el de test/ es la "T"). -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="OC Solicitudes">
-<link rel="apple-touch-icon" href="icon-192.png">
 <script>
   // ===== Versión =====
   // Se muestra en la pantalla de ingreso y arriba a la izquierda dentro de la app, para
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
-  // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
-  // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.8';
+  // 2.M.C, donde M es la mejora en curso y C el número de corrección dentro de esa mejora.
+  var VERSION_APP = '2.2.0';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -36,22 +28,6 @@
   if (ES_PRUEBA) {
     document.documentElement.className += ' entorno-prueba';
     document.title = 'PRUEBA · OC Solicitudes';
-    // Nombre que el iPhone le pone al ícono cuando se agrega a la pantalla de inicio.
-    var metaTituloIOS = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-    if (metaTituloIOS) metaTituloIOS.setAttribute('content', 'OC Prueba');
-  }
-
-  // ===== iPhone / iPad =====
-  // En iPhone no hay APK: la app se instala desde el navegador con Compartir > Agregar a inicio.
-  // Todo lo que depende de ES_IOS solo actúa en iPhone o iPad; en Android nada cambia.
-  //   ES_IOS         -> el dispositivo es un iPhone o iPad (cualquier navegador).
-  //   IOS_INSTALADA  -> además, se abrió desde el ícono de la pantalla de inicio.
-  var ES_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  var IOS_INSTALADA = ES_IOS && (navigator.standalone === true ||
-    !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
-  if (ES_IOS) {
-    document.documentElement.className += IOS_INSTALADA ? ' es-ios ios-instalada' : ' es-ios ios-navegador';
   }
 </script>
 <style>
@@ -306,18 +282,6 @@
     padding:8px 2px; background:none; border:none; color: var(--text-dim);
     font-size:12px; letter-spacing:0.5px; text-decoration:underline;
   }
-  /* Exportar a Excel: arriba del Historial de Compras y de Gerencia. Se elige el mes y se baja
-     la planilla de ese mes, con el mismo formato de la que usa el cliente. */
-  .fila-exportar { display:flex; gap:8px; align-items:center; justify-content:flex-end; margin:0 0 12px; }
-  .fila-exportar select {
-    flex:1; min-width:0; max-width:210px; padding:8px 10px; border-radius:8px; border:1px solid #333;
-    background:var(--bg-card); color:var(--text); font-size:16px; font-family:inherit;
-  }
-  .btn-exportar {
-    flex:none; padding:9px 12px; border:1px solid var(--gold-dark); border-radius:8px;
-    background:transparent; color: var(--gold);
-    font-size:12px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase; font-family:inherit;
-  }
   .msg { min-height:20px; margin-top:10px; font-size:13px; }
   .msg.ok { color:#7fd88f; }
   .msg.error { color:var(--rojo); }
@@ -437,12 +401,6 @@
     text-transform:uppercase;
     text-align:center;
   }
-  .firma-resumen {
-    display:none;
-    color: var(--text); font-size:14px; line-height:1.45; text-align:center; white-space:pre-line;
-    max-width:480px;
-  }
-  .firma-resumen.visible { display:block; }
   .firma-wrap {
     width:100%;
     max-width:480px;
@@ -540,7 +498,6 @@
     display:inline-block; font-size:10px; padding:3px 8px; border-radius:10px;
     letter-spacing:0.5px; text-transform:uppercase; border:1px solid #444; color: var(--text-dim);
   }
-  .chips-urgencia { display:flex; flex-wrap:wrap; gap:6px; }
   .chip-accion { border-color: var(--gold); color: var(--gold); }
   .chip-espera { border-color:#6b8fd6; color:#9db6ec; }
   .chip-ok { border-color:#58b86a; color:#8fdc9d; }
@@ -640,23 +597,6 @@
     background:#141414; color: var(--text); font-size:14px; font-family:inherit; resize:vertical;
   }
 
-  /* Franja de avisos (notificaciones push): arriba del contenido, en todas las pestañas,
-     mientras el celular no tenga los avisos activados. */
-  .banda-avisos {
-    display:none; align-items:center; gap:10px; margin:0 0 14px; padding:10px 12px;
-    border:1px solid var(--gold-dark); border-radius:10px; background:#1d1a12;
-    color: var(--gold-light); font-size:13px; line-height:1.35;
-  }
-  .banda-avisos.visible { display:flex; }
-  .banda-avisos span { flex:1; }
-  .banda-avisos .btn-avisos {
-    flex:none; background: var(--gold-metal); color:#121212; border:none; border-radius:8px;
-    padding:9px 12px; font-size:13px; font-weight:700; font-family:inherit;
-  }
-  .banda-avisos .btn-avisos:disabled { opacity:0.6; }
-  .banda-avisos .banda-cerrar {
-    flex:none; background:none; border:none; color: var(--text-dim); font-size:20px; line-height:1; padding:2px 4px;
-  }
   .toast {
     position:fixed; left:16px; right:16px; top:74px; z-index:1200;
     background:#2a2416; border:1px solid var(--gold); color: var(--gold-light);
@@ -672,55 +612,6 @@
   .version-app { font-size:11px; letter-spacing:0.5px; color:#6f6f6f; }
   #loginScreen .version-app { margin-top:8px; }
   .version-header { position:absolute; left:12px; top:50%; transform:translateY(-50%); }
-
-  /* ---------- iPhone / iPad ---------- */
-  /* Aviso para instalar: solo se ve en iPhone cuando la app se abrió desde el navegador
-     y todavía no desde el ícono de la pantalla de inicio. */
-  .aviso-ios { display:none; }
-  html.ios-navegador .aviso-ios {
-    display:flex; flex-direction:column; gap:6px;
-    width:100%; max-width:420px; margin-top:6px;
-    padding:12px 14px; border:1px solid var(--gold-dark); border-radius:10px;
-    background: var(--bg-card); color: var(--text-dim);
-    font-size:13px; line-height:1.45; text-align:left;
-  }
-  .aviso-ios strong { color: var(--gold); font-size:14px; letter-spacing:0.3px; }
-  .aviso-ios b { color: var(--text); font-weight:600; }
-  .aviso-ios .aviso-ios-nota { font-size:12px; color:#7d7d7d; }
-
-  /* Campos de fecha en iPhone. Safari los dibuja como un botón propio: ignora el ancho
-     pedido, les suma el relleno por fuera y centra el texto, así que se salían del margen
-     derecho. Con esto se comportan como el resto de los campos. Solo actúa en iPhone/iPad. */
-  html.es-ios form input[type="date"] {
-    -webkit-appearance:none; appearance:none;
-    display:block; box-sizing:border-box;
-    width:100%; max-width:100%; min-width:0;
-    min-height:44px;
-    text-align:left;
-  }
-  html.es-ios form input[type="date"]::-webkit-date-and-time-value {
-    margin:0; text-align:left;
-    min-height:1.2em;
-  }
-
-  /* Barra de respaldo: aparece solo si el iPhone no dejó abrir la hoja de Compartir. */
-  .barra-pdf {
-    display:none; position:fixed; left:12px; right:12px;
-    bottom:calc(78px + env(safe-area-inset-bottom, 0px)); z-index:1300;
-    align-items:center; gap:10px;
-    background:#2a2416; border:1px solid var(--gold); border-radius:10px;
-    padding:10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.6);
-    color: var(--gold-light); font-size:13px;
-  }
-  .barra-pdf.visible { display:flex; }
-  .barra-pdf span { flex:1; }
-  .barra-pdf .barra-pdf-accion {
-    background: var(--gold-metal); color:#121212; border:none; border-radius:8px;
-    padding:9px 12px; font-size:13px; font-weight:700; font-family:inherit;
-  }
-  .barra-pdf .barra-pdf-cerrar {
-    background:none; border:none; color: var(--text-dim); font-size:22px; line-height:1; padding:2px 6px;
-  }
 
   /* ---------- Entorno de prueba ---------- */
   /* Todo este bloque solo actúa cuando la página se abre desde /test/.
@@ -765,11 +656,6 @@
       <button id="btnLogin" onclick="intentarLogin()">Ingresar</button>
       <div id="loginError"></div>
     </div>
-    <div id="avisoInstalarIOS" class="aviso-ios">
-      <strong>Instalá la app en tu iPhone</strong>
-      <span>Tocá <b>Compartir</b> (el cuadrado con la flecha hacia arriba) y elegí <b>Agregar a inicio</b>. Después entrá siempre desde ese ícono.</span>
-      <span class="aviso-ios-nota">Si no aparece esa opción, abrí esta dirección en Safari.</span>
-    </div>
     <div class="version-app" id="versionLogin"></div>
   </div>
 
@@ -782,12 +668,6 @@
       </button>
     </header>
     <main>
-      <!-- Avisos con la app cerrada: invita a activarlos en este celular. -->
-      <div id="bandaAvisos" class="banda-avisos" role="status">
-        <span id="bandaAvisosTexto"></span>
-        <button type="button" class="btn-avisos" id="btnActivarAvisos" onclick="activarAvisos(this)">Activar avisos</button>
-        <button type="button" class="banda-cerrar" id="btnCerrarBandaAvisos" onclick="cerrarBandaAvisos()" aria-label="Cerrar">&times;</button>
-      </div>
       <!-- ===== INICIO (Encargado) ===== -->
       <div id="tab-inicio" class="tab-content active">
         <div class="selector-modo">
@@ -922,30 +802,11 @@
       <!-- ===== Compras ===== -->
       <div id="tab-cSolicitudes" class="tab-content"><div id="listaCSolicitudes"></div></div>
       <div id="tab-cUrgencias" class="tab-content"><div id="listaCUrgencias"></div></div>
-      <div id="tab-cHistorial" class="tab-content">
-        <div class="fila-exportar"><select id="mesExcelC" aria-label="Mes del Excel"></select><button type="button" class="btn-exportar" onclick="exportarExcel('mesExcelC')">Exportar a Excel</button></div>
-        <div id="listaCHistorial"></div>
-      </div>
+      <div id="tab-cHistorial" class="tab-content"><div id="listaCHistorial"></div></div>
 
       <!-- ===== Gerencia ===== -->
       <div id="tab-gPorAprobar" class="tab-content"><div id="listaGPorAprobar"></div></div>
-      <div id="tab-gHistorial" class="tab-content">
-        <!-- Gerencia ve en su Historial las órdenes que resolvió y, aparte, las compras de
-             urgencia que informaron los encargados (solo para consultar). -->
-        <div class="fila-exportar"><select id="mesExcelG" aria-label="Mes del Excel"></select><button type="button" class="btn-exportar" onclick="exportarExcel('mesExcelG')">Exportar a Excel</button></div>
-        <div class="selector-modo">
-          <button type="button" id="btnGHOrdenes" class="activo" onclick="verHistorialGerencia('ordenes')">
-            Órdenes
-            <small id="gHCuentaOrdenes">&nbsp;</small>
-          </button>
-          <button type="button" id="btnGHUrgencias" onclick="verHistorialGerencia('urgencias')">
-            Urgencias
-            <small id="gHCuentaUrgencias">&nbsp;</small>
-          </button>
-        </div>
-        <div id="listaGHistorial"></div>
-        <div id="listaGUrgencias" style="display:none"></div>
-      </div>
+      <div id="tab-gHistorial" class="tab-content"><div id="listaGHistorial"></div></div>
     </main>
     <nav class="bottom-nav" id="navEncargado">
       <button id="nav-inicio" class="active" onclick="mostrarTab('inicio')">
@@ -1027,211 +888,6 @@
   const db = firebase.firestore();
 
   const LIMITE_URGENCIA = 200000;
-
-  // ---------- Avisos con la app cerrada (notificaciones push) ----------
-  // Cada celular que activa los avisos queda registrado en "dispositivos" con su rol.
-  // Después de cada cambio (orden nueva, aprobada, recibida...) la app le avisa al servicio
-  // oc-avisos (Cloudflare), que decide a quién notificar según el estado real de la orden.
-  // Los encargados comparten usuario: cada orden guarda desde qué celular se creó y los avisos
-  // de esa orden le llegan solo a ese celular.
-  const URL_AVISOS = 'https://oc-avisos.ignabeni1.workers.dev';
-  // Clave pública de avisos de cada proyecto. La del proyecto real se completa al pasar a producción;
-  // mientras esté vacía, en producción los avisos quedan apagados y nada cambia.
-  const CLAVE_AVISOS = ES_PRUEBA ? 'BPwDDRiVrMiqPZzpMfgx9Axq_5v-2m395SpOHPQwlrbbOwElmTY3MuD8kXs5v1f7pE9iu4UMqS_HCTBvGbaii54' : '';
-  const URL_MENSAJERIA = 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js';
-  const SUFIJO_LOCAL = ES_PRUEBA ? '_prueba' : '';
-  let avisosRegistrados = false;
-  // Con el permiso ya dado, el registro al entrar es automático: mientras se hace no se muestra
-  // la franja (antes aparecía un instante). Solo vuelve si ese registro automático falla.
-  let registroAutomatico = '';   // '' | 'en curso' | 'fallo'
-  let cargaMensajeria = null;
-
-  function leerLocal(clave) { try { return localStorage.getItem(clave + SUFIJO_LOCAL); } catch (e) { return null; } }
-  function guardarLocalStorage(clave, valor) { try { localStorage.setItem(clave + SUFIJO_LOCAL, valor); } catch (e) { /* sin almacenamiento */ } }
-
-  // Identificador propio de este celular (no cambia aunque cambie el usuario).
-  let idDispositivoMemoria = null;
-  function idDispositivo() {
-    if (idDispositivoMemoria) return idDispositivoMemoria;
-    let id = leerLocal('oc_dispositivo');
-    if (!id || !/^[\w-]{8,64}$/.test(id)) {
-      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
-        'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
-      guardarLocalStorage('oc_dispositivo', id);
-    }
-    idDispositivoMemoria = id;
-    return id;
-  }
-
-  function avisosDisponibles() {
-    return !!CLAVE_AVISOS && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-  }
-
-  function cargarMensajeria() {
-    if (firebase.messaging) return Promise.resolve();
-    if (cargaMensajeria) return cargaMensajeria;
-    cargaMensajeria = new Promise(function(resolve, reject) {
-      const sc = document.createElement('script');
-      sc.src = URL_MENSAJERIA;
-      sc.onload = function() { firebase.messaging ? resolve() : reject(new Error('no cargó')); };
-      sc.onerror = function() { cargaMensajeria = null; sc.remove(); reject(new Error('revisá la conexión a internet')); };
-      document.head.appendChild(sc);
-    });
-    return cargaMensajeria;
-  }
-
-  function esperarActivo(reg) {
-    if (reg.active) return Promise.resolve(reg);
-    return conLimite(new Promise(function(resolve) {
-      const sw = reg.installing || reg.waiting;
-      if (!sw) { resolve(reg); return; }
-      sw.addEventListener('statechange', function() { if (sw.state === 'activated') resolve(reg); });
-    }), 15000);
-  }
-
-  // Registra este celular para recibir avisos del usuario que está adentro.
-  async function registrarDispositivo() {
-    const reg = await navigator.serviceWorker.register('sw-avisos.js', { scope: './' });
-    await esperarActivo(reg);
-    await cargarMensajeria();
-    const token = await firebase.messaging().getToken({ vapidKey: CLAVE_AVISOS, serviceWorkerRegistration: reg });
-    if (!token) throw new Error('el celular no entregó el permiso');
-    if (!usuarioActual) return;
-    await db.collection('dispositivos').doc(idDispositivo()).set({
-      token: token,
-      rol: usuarioActual.rol,
-      email: usuarioActual.email,
-      plataforma: ES_IOS ? 'iphone' : 'android',
-      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    avisosRegistrados = true;
-  }
-
-  // Al salir, este celular deja de recibir avisos de ese usuario.
-  function quitarDispositivo() {
-    if (!avisosRegistrados) return Promise.resolve();
-    avisosRegistrados = false;
-    return db.collection('dispositivos').doc(idDispositivo()).delete().catch(function() { /* ya no estaba */ });
-  }
-
-  function textoBandaAvisos() {
-    if (!CLAVE_AVISOS) return null;
-    if (!avisosDisponibles()) {
-      // iPhone abierto desde Safari sin instalar: los avisos solo funcionan con la app instalada.
-      if (ES_IOS && !IOS_INSTALADA) return { texto: 'Para recibir avisos en el iPhone, instalá la app: en Safari tocá Compartir → Agregar a inicio, y abrila desde el ícono.', boton: false };
-      return null;
-    }
-    if (Notification.permission === 'denied') {
-      return { texto: 'Los avisos están bloqueados en este celular. Para recibirlos, permití las notificaciones de esta app en la configuración del celular.', boton: false };
-    }
-    if (Notification.permission === 'granted' && (avisosRegistrados || registroAutomatico !== 'fallo')) return null;
-    return { texto: 'Activá los avisos para enterarte de las novedades aunque la app esté cerrada.', boton: true };
-  }
-
-  function actualizarBandaAvisos() {
-    const banda = document.getElementById('bandaAvisos');
-    const info = usuarioActual ? textoBandaAvisos() : null;
-    const cerrada = info && !info.boton && leerLocal('oc_banda_avisos_cerrada') === info.texto;
-    if (!info || cerrada) { banda.classList.remove('visible'); return; }
-    document.getElementById('bandaAvisosTexto').textContent = info.texto;
-    document.getElementById('btnActivarAvisos').style.display = info.boton ? '' : 'none';
-    // La invitación a activar no se puede cerrar: es la forma de recibir los avisos.
-    document.getElementById('btnCerrarBandaAvisos').style.display = info.boton ? 'none' : '';
-    banda.classList.add('visible');
-  }
-
-  function cerrarBandaAvisos() {
-    guardarLocalStorage('oc_banda_avisos_cerrada', document.getElementById('bandaAvisosTexto').textContent);
-    actualizarBandaAvisos();
-  }
-
-  async function activarAvisos(boton) {
-    if (!avisosDisponibles() || !usuarioActual) return;
-    boton.disabled = true;
-    try {
-      // En iPhone el pedido de permiso tiene que salir directo del toque: va primero.
-      const permiso = await Notification.requestPermission();
-      if (permiso !== 'granted') {
-        mostrarToast(permiso === 'denied' ? 'No se activaron los avisos: el permiso quedó bloqueado.' : 'No se activaron los avisos.', true);
-        return;
-      }
-      await registrarDispositivo();
-      registroAutomatico = '';
-      mostrarToast('Avisos activados en este celular.');
-    } catch (err) {
-      mostrarToast('No se pudieron activar los avisos: ' + (err && err.message ? err.message : err), true);
-    } finally {
-      boton.disabled = false;
-      actualizarBandaAvisos();
-    }
-  }
-
-  // Al entrar: si este celular ya tiene el permiso, se registra solo (con el usuario actual)
-  // y se mandan los avisos que hayan quedado pendientes.
-  function prepararAvisos() {
-    registroAutomatico = '';
-    if (avisosDisponibles() && Notification.permission === 'granted' && usuarioActual) {
-      registroAutomatico = 'en curso';
-      registrarDispositivo().then(function() { registroAutomatico = ''; }, function() {
-        registroAutomatico = 'fallo';   // queda la franja con el botón para reintentar
-      }).then(actualizarBandaAvisos);
-    }
-    actualizarBandaAvisos();
-    if (!avisosDisponibles()) return;
-    enviarAvisosPendientes();
-  }
-
-  // Aviso de un cambio. Se guarda en una cola del celular y se manda; si no hay conexión,
-  // queda pendiente y sale al volver la conexión o al abrir la app.
-  function avisarCambio(coleccion, id, evento) {
-    if (!CLAVE_AVISOS || !usuarioActual) return;
-    const cola = leerColaAvisos();
-    cola.push({ coleccion: coleccion, id: id, evento: evento || '', email: usuarioActual.email, cuando: Date.now() });
-    guardarLocalStorage('oc_avisos_pendientes', JSON.stringify(cola.slice(-50)));
-    enviarAvisosPendientes();
-  }
-
-  function leerColaAvisos() {
-    try {
-      const c = JSON.parse(leerLocal('oc_avisos_pendientes') || '[]');
-      return Array.isArray(c) ? c : [];
-    } catch (e) { return []; }
-  }
-
-  let enviandoAvisos = false;
-  async function enviarAvisosPendientes() {
-    if (enviandoAvisos || !CLAVE_AVISOS) return;
-    const user = auth.currentUser;
-    if (!user || !usuarioActual) return;
-    enviandoAvisos = true;
-    try {
-      let cola = leerColaAvisos();
-      const limite = Date.now() - 2 * 24 * 3600 * 1000;   // lo de más de dos días ya no se avisa
-      for (const a of cola.slice()) {
-        let listo = a.cuando < limite || a.email !== usuarioActual.email;
-        if (!listo) {
-          try {
-            const token = await user.getIdToken();
-            const r = await fetch(URL_AVISOS, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify({ coleccion: a.coleccion, id: a.id, evento: a.evento, dispositivo: idDispositivo() })
-            });
-            listo = r.status < 500;   // un error del servicio se reintenta; un pedido rechazado, no
-          } catch (e) {
-            break;                    // sin conexión: queda todo para después
-          }
-        }
-        if (listo) {
-          cola = leerColaAvisos().filter(function(x) { return !(x.coleccion === a.coleccion && x.id === a.id && x.evento === a.evento && x.cuando === a.cuando); });
-          guardarLocalStorage('oc_avisos_pendientes', JSON.stringify(cola));
-        }
-      }
-    } finally {
-      enviandoAvisos = false;
-    }
-  }
-  window.addEventListener('online', function() { enviarAvisosPendientes(); });
 
   let usuarioActual = null;
   let listas = { estaciones: [], encargados: [] };
@@ -1382,7 +1038,6 @@
     renderGeneradas();
     renderHistorial();
     iniciarSeguimientoHistorial();
-    prepararAvisos();
   }
 
   const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
@@ -1402,13 +1057,8 @@
   function cerrarSesion() {
     if (!confirm('¿Querés cerrar sesión?')) return;
 
-    // Antes de salir, este celular se da de baja de los avisos de ese usuario.
-    const saliente = auth.currentUser;
-    conLimite(quitarDispositivo(), 4000).catch(function() {}).then(function() {
-      if (auth.currentUser === saliente) auth.signOut().catch(function() {});
-    });
+    auth.signOut().catch(function() {});
     usuarioActual = null;
-    document.getElementById('bandaAvisos').classList.remove('visible');
 
     document.getElementById('formSolicitud').reset();
     limpiarProductosForm();
@@ -1760,9 +1410,7 @@
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      estado.textContent = ES_IOS
-        ? 'En este iPhone el dictado de la app no está disponible. Podés dictar campo por campo con el micrófono del teclado.'
-        : 'El dictado por voz solo funciona en Chrome.';
+      estado.textContent = 'El dictado por voz solo funciona en Chrome.';
       estado.className = 'msg error';
       return;
     }
@@ -1790,8 +1438,7 @@
     };
 
     reconocimientoVoz.onerror = function(event) {
-      estado.textContent = 'No se pudo escuchar: ' + event.error +
-        (ES_IOS ? '. Podés dictar campo por campo con el micrófono del teclado.' : '');
+      estado.textContent = 'No se pudo escuchar: ' + event.error;
       estado.className = 'msg error';
     };
 
@@ -1800,15 +1447,7 @@
       reconocimientoVoz = null;
     };
 
-    try {
-      reconocimientoVoz.start();
-    } catch (err) {
-      btn.classList.remove('grabando');
-      reconocimientoVoz = null;
-      estado.textContent = 'No se pudo iniciar el dictado: ' + err.message +
-        (ES_IOS ? '. Podés dictar campo por campo con el micrófono del teclado.' : '');
-      estado.className = 'msg error';
-    }
+    reconocimientoVoz.start();
   }
 
   // ---------- Guardado local en el celular (IndexedDB) ----------
@@ -1824,9 +1463,7 @@
     if (dbPromesa) return dbPromesa;
     const promesa = new Promise(function(resolve, reject) {
       if (!window.indexedDB) {
-        reject(new Error(ES_IOS
-          ? 'Este navegador no permite guardar datos. Abrí la app desde el ícono de inicio o desde Safari, sin navegación privada.'
-          : 'Este navegador no permite guardar datos. Usá Chrome.'));
+        reject(new Error('Este navegador no permite guardar datos. Usá Chrome.'));
         return;
       }
       const req = indexedDB.open(DB_NOMBRE, 1);
@@ -2193,10 +1830,8 @@
         estado: 'informada',
         creada: urgencia.creada,
         enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
-        creadoPor: urgencia.creadoPor,
-        dispositivo: idDispositivo()
+        creadoPor: urgencia.creadoPor
       });
-      avisarCambio('urgencias', urgencia.id, 'nueva');
     } catch (err) {
       msg.textContent = mensajeErrorEnvio(err);
       msg.className = 'msg error';
@@ -2270,10 +1905,7 @@
       cacheSolicitudes.set(s.id, s);
       const card = document.createElement('div');
       const estado = estadoActualLocal(s);
-      // Falta confirmar la recepción: una orden con la compra ya realizada, o una compra de
-      // urgencia que el encargado informó y todavía no marcó como recibida.
-      const faltaRecibir = s.tipo === 'urgencia' ? !s.recibidaLocal : estado === 'finalizada';
-      card.className = 'card' + (faltaRecibir ? ' card-por-recibir' : '');
+      card.className = 'card' + (s.tipo !== 'urgencia' && estado === 'finalizada' ? ' card-por-recibir' : '');
       let filaRechazo = '';
       if (estado === 'rechazada' && s.motivoRechazo) {
         const quien = s.rechazadaPor === 'compras' ? 'Compras' : 'Gerencia';
@@ -2288,11 +1920,7 @@
           '<div class="card-row">' + escaparHTML(s.eess) + ' · ' + escaparHTML(s.encargado) + '</div>' +
           '<div class="card-row">Importe: ' + formatoPesos(s.importe) + '</div>' +
           '<div class="card-row">Proveedor: ' + escaparHTML(s.proveedor) + ' · Comp. ' + escaparHTML(s.comprobante) + '</div>' +
-          (s.recibidaLocal ? '<div class="card-row">Recibida' + (s.recibidaPorNombre ? ' por ' + escaparHTML(s.recibidaPorNombre) : '') + ' el ' + fechaCorta(s.recibidaLocal) + '</div>' : '') +
-          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
-          // También en las compras de urgencia el encargado confirma que recibió lo comprado.
-          (faltaRecibir ? '<div class="card-aviso-recibir">Falta que confirmes que la recibiste.</div>' +
-            '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '');
+          '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>';
       } else {
         card.innerHTML =
           '<div class="card-top">' +
@@ -2308,7 +1936,7 @@
           // Último paso del circuito: cuando Compras ya realizó la compra, el encargado confirma que la recibió.
           (estado === 'finalizada' ? '<div class="card-aviso-recibir">Ya se compró. Falta que confirmes cuando la recibas.</div>' +
             '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '') +
-          '<button class="btn-generar-pdf' + (estado === 'finalizada' ? ' btn-card-secundario' : '') + '" onclick="descargarPDFDeNuevo(\'' + s.id + '\', this)">' + (estado === 'recibida' ? 'Descargar PDF final' : 'Descargar PDF de nuevo') + '</button>';
+          '<button class="btn-generar-pdf' + (estado === 'finalizada' ? ' btn-card-secundario' : '') + '" onclick="descargarPDFDeNuevo(\'' + s.id + '\')">Descargar PDF de nuevo</button>';
       }
       cont.appendChild(card);
     });
@@ -2452,12 +2080,6 @@
     s.estadoRemoto = nuevo;
     s.motivoRechazo = datos.motivoRechazo || '';
     s.rechazadaPor = datos.rechazadaPor || '';
-    let recepcionNueva = false;
-    if (s.tipo === 'urgencia' && datos.recibidaEn && !s.recibidaLocal) {
-      s.recibidaLocal = typeof datos.recibidaEn.toDate === 'function' ? fechaLocalISO(datos.recibidaEn.toDate()) : hoyISO();
-      s.recibidaPorNombre = datos.recibidaPorNombre || s.encargado || '';
-      recepcionNueva = true;
-    }
 
     const cambio = nuevo !== anterior;
     if (cambio && !(primera && faseInicialHistorial)) {
@@ -2467,7 +2089,7 @@
 
     try { await guardarLocal(s); } catch (e) { /* el estado se vuelve a leer al reabrir */ }
     actualizarBadgeHistorial();
-    if ((cambio || recepcionNueva) && tabActual === 'historial') await renderHistorial();
+    if (cambio && tabActual === 'historial') await renderHistorial();
   }
 
   // ---------- Confirmar recepción (encargado) ----------
@@ -2476,12 +2098,8 @@
   function marcarRecibidaLocal(id, fecha, nombre) {
     [cacheSolicitudes.get(id), seguimientoLocal.get(id)].forEach(function(s) {
       if (!s) return;
-      // En una orden, recibirla es su último estado. En una compra de urgencia no cambia el
-      // estado (informada / registrada, que lo maneja Compras): solo se anota la recepción.
-      if (s.tipo !== 'urgencia') {
-        s.estadoRemoto = 'recibida';
-        s.vistoEstado = 'recibida';
-      }
+      s.estadoRemoto = 'recibida';
+      s.vistoEstado = 'recibida';
       s.recibidaLocal = fecha;          // día de la recepción, en hora local (AAAA-MM-DD)
       s.recibidaPorNombre = nombre;     // encargado que recibe
     });
@@ -2492,29 +2110,24 @@
   async function confirmarRecepcion(id) {
     const s = cacheSolicitudes.get(id);
     if (!s || !usuarioActual) return;
-    const esUrgencia = s.tipo === 'urgencia';
     const ok = await pedirConfirmacion('Confirmar recepción',
-      '¿Confirmás que ya recibiste ' + (esUrgencia ? s.detalle : tituloDe(s)) + ' (' + s.eess + ')?\nDespués de confirmar no se puede deshacer.', 'Confirmar');
+      '¿Confirmás que ya recibiste ' + tituloDe(s) + ' (' + s.eess + ')?\nDespués de confirmar no se puede deshacer.', 'Confirmar');
     if (!ok) return;
 
     const botones = document.querySelectorAll('#listaHistorial .btn-recibir');
     botones.forEach(function(b) { b.disabled = true; });
-    const ref = db.collection(esUrgencia ? 'urgencias' : 'solicitudes').doc(id);
+    const ref = db.collection('solicitudes').doc(id);
     // Quién recibe: el encargado que hoy tiene asignada esa estación. Los nueve comparten
     // el usuario, así que el nombre sale de la lista de estaciones y no del correo.
     let nombre = encargadoDeEstacion(s.eess) || s.encargado || '';
     let fecha = hoyISO();
-    let copiaYaLeida = null;
-    // Orden: pasa a su último estado. Compra de urgencia: solo se agrega la recepción,
-    // sin tocar el estado, que es de Compras (informada / registrada).
-    const cambios = {
-      recibidaEn: firebase.firestore.FieldValue.serverTimestamp(),
-      recibidaPor: usuarioActual.email,
-      recibidaPorNombre: nombre
-    };
-    if (!esUrgencia) cambios.estado = 'recibida';
     try {
-      await ref.update(cambios);
+      await ref.update({
+        estado: 'recibida',
+        recibidaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        recibidaPor: usuarioActual.email,
+        recibidaPorNombre: nombre
+      });
     } catch (err) {
       // Puede fallar porque ya estaba confirmada (por ejemplo, se confirmó pero el celular
       // no llegó a anotarlo). Se mira cómo está en el servidor antes de avisar un error.
@@ -2522,9 +2135,8 @@
       try {
         const snap = await ref.get();
         const remoto = snap.exists ? (snap.data() || {}) : {};
-        yaRecibida = esUrgencia ? !!remoto.recibidaEn : remoto.estado === 'recibida';
+        yaRecibida = remoto.estado === 'recibida';
         if (yaRecibida) {
-          copiaYaLeida = remoto;
           if (remoto.recibidaPorNombre) nombre = remoto.recibidaPorNombre;
           if (remoto.recibidaEn && typeof remoto.recibidaEn.toDate === 'function') {
             const d = remoto.recibidaEn.toDate();
@@ -2535,23 +2147,14 @@
       if (!yaRecibida) {
         botones.forEach(function(b) { b.disabled = false; });
         await mostrarAviso('No se pudo confirmar', mensajeErrorEnvio(err).replace('el envío', 'la confirmación').replace('No se pudo enviar', 'No se pudo confirmar') +
-          (esUrgencia ? '\nLa compra de urgencia sigue sin confirmar. Probá de nuevo.' : '\nLa orden sigue como "Compra realizada". Probá de nuevo.'));
+          '\nLa orden sigue como "Compra realizada". Probá de nuevo.');
         return;
       }
     }
     await marcarRecibidaLocal(id, fecha, nombre);
-    avisarCambio(esUrgencia ? 'urgencias' : 'solicitudes', id, esUrgencia ? 'recepcion' : '');
-    if (!esUrgencia) {
-      // Se guarda la orden tal como quedó en Firebase: con eso el encargado descarga el mismo
-      // PDF final que Compras y Gerencia. Si justo falla, se vuelve a pedir al descargar.
-      try {
-        if (copiaYaLeida) await guardarCopiaFinal(id, copiaYaLeida);
-        else await conLimite(traerOrdenFinal(id), 5000);
-      } catch (e) { /* queda para la primera descarga */ }
-    }
     actualizarBadgeHistorial();
     await renderHistorial();
-    mostrarToast(esUrgencia ? 'Recepción confirmada. Compras y Gerencia ya lo ven.' : 'Recepción confirmada. Ya podés descargar el PDF final.');
+    mostrarToast('Recepción confirmada.');
   }
 
   // ---------- PDF ----------
@@ -2671,424 +2274,38 @@
 
     y += 6;
 
-    // Firmas: la del encargado a la izquierda y, si Gerencia aprobó firmando, la suya a la derecha.
-    if (solicitud.firma || solicitud.firmaGerencia) {
+    if (solicitud.firma) {
       if (y > 230) { doc.addPage(); y = 20; }
       y += 4;
-      const firmaEnPDF = function(x, titulo, imagen, pie) {
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.setFont(undefined, 'bold');
-        doc.text(titulo, x, y);
-        try {
-          doc.addImage(imagen, 'PNG', x, y + 4, 70, 30, undefined, 'FAST');
-        } catch (e) {
-          // si la firma falla, seguimos sin bloquear el resto del PDF
-        }
-        doc.setDrawColor(150, 150, 150);
-        doc.line(x, y + 34, x + 70, y + 34);
-        doc.setFontSize(9);
-        doc.setTextColor(90, 90, 90);
-        doc.text(pie, x, y + 39);
-      };
-      if (solicitud.firma) firmaEnPDF(15, 'Firma del Encargado:', solicitud.firma, solicitud.encargado || '');
-      if (solicitud.firmaGerencia) firmaEnPDF(110, 'Firma de Gerencia:', solicitud.firmaGerencia, 'Gerencia');
-      y += 34;
+      doc.setFont(undefined, 'bold');
+      doc.text('Firma del Encargado:', 15, y);
+      y += 4;
+      try {
+        doc.addImage(solicitud.firma, 'PNG', 15, y, 70, 30);
+      } catch (e) {
+        // si la firma falla, seguimos sin bloquear el resto del PDF
+      }
+      y += 30;
+      doc.setDrawColor(150, 150, 150);
+      doc.line(15, y, 85, y);
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(solicitud.encargado || '', 15, y + 5);
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
       doc.setFont(undefined, 'normal');
     }
 
-    const nombrePDF = 'orden-de-compra-' + solicitud.id + '.pdf';
-    // En iPhone el PDF no se descarga solo: se abre la hoja de Compartir del teléfono.
-    if (ES_IOS && entregarPDFenIOS(doc, nombrePDF)) return;
-    doc.save(nombrePDF);
+    doc.save('orden-de-compra-' + solicitud.id + '.pdf');
   }
-
-  // ---------- PDF en iPhone / iPad ----------
-  // En iPhone la descarga directa de un archivo generado por la app no es confiable, y menos
-  // cuando se abrió desde el ícono de la pantalla de inicio. Por eso el PDF se entrega con la hoja
-  // de Compartir del teléfono (Guardar en Archivos, WhatsApp, Mail, Imprimir...).
-  // Si el iPhone no ofrece compartir archivos, devuelve false y se usa la descarga de siempre.
-  let pdfIOS = null;
-
-  function entregarPDFenIOS(doc, nombre) {
-    let blob;
-    try { blob = doc.output('blob'); } catch (e) { return false; }
-    return entregarArchivoIOS(blob, nombre, 'application/pdf', function() { doc.save(nombre); }, 'El PDF está listo.');
-  }
-
-  // Sirve para cualquier archivo que genera la app (el PDF de la orden o el Excel).
-  // "guardar" es la descarga de siempre, que queda como último recurso.
-  function entregarArchivoIOS(blob, nombre, tipo, guardar, textoListo) {
-    let archivo;
-    try {
-      archivo = new File([blob], nombre, { type: tipo });
-      if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [archivo] })) return false;
-    } catch (e) {
-      return false;
-    }
-    pdfIOS = { archivo: archivo, guardar: guardar };
-    document.getElementById('barraPDFTexto').textContent = textoListo;
-    compartirPDFIOS(true);
-    return true;
-  }
-
-  // primerIntento: true cuando se llama al generar el archivo; false cuando el usuario toca
-  // "Compartir o guardar" en la barra de respaldo.
-  function compartirPDFIOS(primerIntento) {
-    const actual = pdfIOS;
-    if (!actual) { ocultarBarraPDF(); return; }
-    ocultarBarraPDF();
-    let intento;
-    try {
-      intento = navigator.share({ files: [actual.archivo] });
-    } catch (e) {
-      intento = Promise.reject(e);
-    }
-    Promise.resolve(intento).then(function() {
-      if (pdfIOS === actual) pdfIOS = null;
-    }).catch(function(err) {
-      // Cerró la hoja sin elegir nada: no es un error. El archivo sigue disponible con su botón.
-      if (err && err.name === 'AbortError') {
-        if (pdfIOS === actual) pdfIOS = null;
-        return;
-      }
-      // El iPhone no dejó abrir la hoja en este momento: se ofrece un botón para reintentar.
-      if (primerIntento) { mostrarBarraPDF(); return; }
-      // Tampoco con el botón: último recurso, la descarga de siempre.
-      if (pdfIOS === actual) pdfIOS = null;
-      try {
-        actual.guardar();
-      } catch (e) {
-        mostrarToast('No se pudo abrir el archivo: ' + e.message, true);
-      }
-    });
-  }
-
-  function mostrarBarraPDF() { document.getElementById('barraPDF').classList.add('visible'); }
-  function ocultarBarraPDF() { document.getElementById('barraPDF').classList.remove('visible'); }
-
-  // ---------- Excel de compras (formato de la planilla del cliente) ----------
-  // El archivo sale de la misma planilla que usa el cliente (COMPRAS_<MES>.xlsx): mismas hojas,
-  // colores, listas, fórmulas y gráficos. La app solo completa las filas de "Base de Compras"
-  // y deja guardados los totales para que se vean bien aunque el visor no recalcule.
-  // Cambios aprobados sobre su planilla: categorías de la app (4-B) y los cuatro errores (5-A).
-  // Entran las compras hechas: órdenes con la compra realizada (o ya recibidas) y compras de urgencia.
-  const CATEGORIAS_EXCEL = ['Computación', 'Imagen', 'Librería', 'Limpieza', 'Obras', 'Papelería', 'Ropa', 'Varios'];
-  // Estaciones en el orden de las hojas de control, escritas como en su planilla.
-  const ESTACIONES_EXCEL = ['EESS Axion Junín', 'EESS Axion Plottier', 'EESS Axion Neuquén', 'EESS YPF LG Plottier',
-    'EESS LG Rincón', 'EESS El Triángulo Bs As', 'EESS El Triángulo Santa Fe', 'EESS Auca Neuquén', 'EESS Auca Rincón'];
-  const NOMBRE_EESS_EXCEL = {
-    'Axion Jun.': 'EESS Axion Junín', 'Axion Plo.': 'EESS Axion Plottier', 'Axion Nqn.': 'EESS Axion Neuquén',
-    'LG Plottier': 'EESS YPF LG Plottier', 'LG Rincón': 'EESS LG Rincón', 'Triángulos Bas.': 'EESS El Triángulo Bs As',
-    'Triángulos StFe': 'EESS El Triángulo Santa Fe', 'Auca Nqn.': 'EESS Auca Neuquén', 'Auca Rincón': 'EESS Auca Rincón'
-  };
-  // Razón social de cada estación (Duda 2-B). Mientras el cliente no la pase, la columna sale vacía.
-  const RAZON_SOCIAL_EXCEL = {};
-  const MESES_EXCEL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-  // Día local AAAA-MM-DD de una fecha de Firebase o de un texto que ya viene así.
-  function diaDeCompra(v) {
-    if (v && typeof v.toDate === 'function') return fechaLocalISO(v.toDate());
-    const t = String(v || '').slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : '';
-  }
-
-  // Una fila por compra hecha, con los datos de cada columna de "Base de Compras".
-  function comprasParaExcel(ordenes, urgencias) {
-    const filas = [];
-    ordenes.forEach(function(s) {
-      if (!compraHecha(s.estado)) return;
-      const presus = s.presupuestos || [];
-      const elegido = typeof s.presupuestoElegido === 'number' ? presus[s.presupuestoElegido] : null;
-      filas.push({
-        // Si la fecha de la compra todavía no volvió de Firebase (recién marcada), es la de hoy.
-        fecha: diaDeCompra(s.finalizadaEn) || hoyISO(),
-        orden: String(s.creada || ''),
-        eess: NOMBRE_EESS_EXCEL[s.eess] || s.eess || '',
-        proveedor: elegido ? elegido.proveedor : '',
-        categoria: s.categoria || '',
-        detalle: productosDe(s).map(function(p) { return p.cantidad + ' × ' + p.producto; }).join('; '),
-        razon: RAZON_SOCIAL_EXCEL[NOMBRE_EESS_EXCEL[s.eess] || s.eess] || '',
-        factura: s.notaCompra || '',
-        importe: elegido ? Number(elegido.monto) : null,
-        recibio: s.estado === 'recibida' ? 'Sí' : 'No'
-      });
-    });
-    urgencias.forEach(function(u) {
-      filas.push({
-        fecha: diaDeCompra(u.fechaCompra) || diaDeCompra(u.creada) || hoyISO(),
-        orden: String(u.creada || ''),
-        eess: NOMBRE_EESS_EXCEL[u.eess] || u.eess || '',
-        proveedor: u.proveedor || '',
-        categoria: 'Varios',   // 4b: las compras de urgencia van a Varios
-        detalle: u.detalle || '',
-        razon: RAZON_SOCIAL_EXCEL[NOMBRE_EESS_EXCEL[u.eess] || u.eess] || '',
-        factura: u.comprobante || '',
-        importe: u.importe === null || u.importe === undefined || u.importe === '' ? null : Number(u.importe),
-        recibio: u.recibidaEn ? 'Sí' : 'No'
-      });
-    });
-    filas.forEach(function(f) { if (f.importe !== null && !isFinite(f.importe)) f.importe = null; });
-    filas.sort(function(a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden.localeCompare(b.orden); });
-    return filas;
-  }
-
-  // Meses (AAAA-MM) que tienen compras, del más reciente al más viejo.
-  function mesesConCompras(filas) {
-    const vistos = {};
-    filas.forEach(function(f) { if (f.fecha) vistos[f.fecha.slice(0, 7)] = true; });
-    return Object.keys(vistos).sort().reverse();
-  }
-
-  function nombreMesExcel(mes) {
-    const m = MESES_EXCEL[Number(mes.slice(5, 7)) - 1] || '';
-    return m.charAt(0).toUpperCase() + m.slice(1) + ' ' + mes.slice(0, 4);
-  }
-
-  function nombreArchivoExcel(mes) {
-    return 'COMPRAS_' + (MESES_EXCEL[Number(mes.slice(5, 7)) - 1] || mes).toUpperCase() + '.xlsx';
-  }
-
-  function textoXML(t) {
-    return String(t).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function serialExcel(dia) {
-    const p = dia.split('-').map(Number);
-    return Math.round((Date.UTC(p[0], p[1] - 1, p[2]) - Date.UTC(1899, 11, 30)) / 86400000);
-  }
-
-  function redondear(n) { return Math.round(n * 100) / 100; }
-
-  // Los totales que calculan las fórmulas de las hojas de control, para dejarlos guardados.
-  // Igual que SUMIF, no distingue mayúsculas.
-  function totalesExcel(filas) {
-    const v = {};
-    const igual = function(a, b) { return String(a).toLowerCase() === String(b).toLowerCase(); };
-    const suma = function(cond) {
-      return redondear(filas.reduce(function(t, f) { return t + (f.importe !== null && cond(f) ? f.importe : 0); }, 0));
-    };
-    let total = 0;
-    CATEGORIAS_EXCEL.forEach(function(c, i) { v['C!B' + (i + 3)] = suma(function(f) { return igual(f.categoria, c); }); total += v['C!B' + (i + 3)]; });
-    v['C!B11'] = redondear(total);
-    total = 0;
-    ESTACIONES_EXCEL.forEach(function(e, i) { v['E!B' + (i + 3)] = suma(function(f) { return igual(f.eess, e); }); total += v['E!B' + (i + 3)]; });
-    v['E!B12'] = redondear(total);
-    'BCDEFGHI'.split('').forEach(function(col, j) {
-      let tc = 0;
-      ESTACIONES_EXCEL.forEach(function(e, i) {
-        const x = suma(function(f) { return igual(f.eess, e) && igual(f.categoria, CATEGORIAS_EXCEL[j]); });
-        v['X!' + col + (i + 2)] = x;
-        tc += x;
-      });
-      v['X!' + col + '11'] = redondear(tc);
-    });
-    return v;
-  }
-
-  function hojaBaseDeCompras(h, filas, ultima) {
-    const cols = 'ABCDEFGHIJ';
-    const hasta = Math.max(1000, ultima);
-    // Todas las filas de la tabla (incluidas las que se agregan si pasa de 200) tienen el formato de la fila 2.
-    const filaTabla = h.patrones[h.codigo.charCodeAt(0) - 48];
-    const partes = [h.fila1];
-    for (let r = 2; r <= hasta; r++) {
-      const pat = r <= ultima ? filaTabla : h.patrones[h.codigo.charCodeAt(Math.min(r, 1000) - 2) - 48];
-      const attrs = pat[0];
-      const f = filas[r - 2];
-      if (!f) {
-        partes.push(pat[1].length
-          ? '<row r="' + r + '" ' + attrs + '>' + pat[1].map(function(s, i) { return '<c r="' + cols[i] + r + '" s="' + s + '" />'; }).join('') + '</row>'
-          : '<row r="' + r + '" ' + attrs + ' />');
-        continue;
-      }
-      const est = pat[1];
-      const valores = [null, f.eess, f.proveedor, f.categoria, f.detalle, f.razon, f.factura, null, f.recibio, ''];
-      let celdas = '<c r="A' + r + '" s="17"><v>' + serialExcel(f.fecha) + '</v></c>';
-      for (let i = 1; i < 10; i++) {
-        const ref = cols[i] + r;
-        if (i === 7) {
-          celdas += f.importe === null ? '<c r="' + ref + '" s="' + est[i] + '" />' : '<c r="' + ref + '" s="' + est[i] + '"><v>' + f.importe + '</v></c>';
-        } else if (valores[i]) {
-          celdas += '<c r="' + ref + '" s="' + est[i] + '" t="inlineStr"><is><t xml:space="preserve">' + textoXML(valores[i]) + '</t></is></c>';
-        } else {
-          celdas += '<c r="' + ref + '" s="' + est[i] + '" />';
-        }
-      }
-      partes.push('<row r="' + r + '" ' + attrs + '>' + celdas + '</row>');
-    }
-    return h.pre + partes.join('') + h.suf;
-  }
-
-  // Arma el .xlsx (bytes) del molde y las compras del mes.
-  function armarExcelCompras(plantilla, filas) {
-    // La tabla y las fórmulas cubren hasta la fila 201 como en su planilla; si hay más compras, se amplían (1b-A).
-    const ultima = Math.max(201, filas.length + 1);
-    const valores = totalesExcel(filas);
-    const completar = function(x) {
-      return x.replace(/\{\{VACIAS:(\d+):(\d+):([^}]*)\}\}/g, function(m, d, h, a) {
-        let s = '';
-        for (let r = Number(d); r <= Number(h); r++) s += '<row r="' + r + '"' + a + '/>';
-        return s;
-      }).replace(/\{\{U\}\}/g, String(ultima))
-        .replace(/\{\{DIM\}\}/g, String(Math.max(1000, ultima)))
-        .replace(/\{\{([CEX]![A-J]\d+)\}\}/g, function(m, k) {
-          if (!(k in valores)) throw new Error('falta el total ' + k);
-          return String(valores[k]);
-        });
-    };
-    const enc = new TextEncoder();
-    const archivos = plantilla.orden.map(function(nombre) {
-      const p = plantilla.partes[nombre];
-      const xml = nombre === 'xl/worksheets/sheet1.xml' ? completar(hojaBaseDeCompras(p, filas, ultima)) : completar(p);
-      return { nombre: nombre, datos: enc.encode(xml) };
-    });
-    return zipSinComprimir(archivos, new Date());
-  }
-
-  // ZIP sin compresión (el formato .xlsx es un ZIP). Sin librerías externas.
-  let tablaCRC = null;
-  function crc32(bytes) {
-    if (!tablaCRC) {
-      tablaCRC = new Uint32Array(256);
-      for (let n = 0; n < 256; n++) {
-        let c = n;
-        for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-        tablaCRC[n] = c >>> 0;
-      }
-    }
-    let crc = 0xFFFFFFFF;
-    for (let i = 0; i < bytes.length; i++) crc = tablaCRC[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
-    return (crc ^ 0xFFFFFFFF) >>> 0;
-  }
-
-  function zipSinComprimir(archivos, fecha) {
-    const enc = new TextEncoder();
-    const hora = (fecha.getHours() << 11) | (fecha.getMinutes() << 5) | (fecha.getSeconds() >> 1);
-    const dia = ((fecha.getFullYear() - 1980) << 9) | ((fecha.getMonth() + 1) << 5) | fecha.getDate();
-    const locales = [], central = [];
-    let desplazamiento = 0;
-    archivos.forEach(function(a) {
-      const nombre = enc.encode(a.nombre);
-      const crc = crc32(a.datos);
-      const cab = new DataView(new ArrayBuffer(30));
-      cab.setUint32(0, 0x04034b50, true); cab.setUint16(4, 20, true); cab.setUint16(6, 0x0800, true);
-      cab.setUint16(8, 0, true); cab.setUint16(10, hora, true); cab.setUint16(12, dia, true);
-      cab.setUint32(14, crc, true); cab.setUint32(18, a.datos.length, true); cab.setUint32(22, a.datos.length, true);
-      cab.setUint16(26, nombre.length, true); cab.setUint16(28, 0, true);
-      locales.push(new Uint8Array(cab.buffer), nombre, a.datos);
-      const cen = new DataView(new ArrayBuffer(46));
-      cen.setUint32(0, 0x02014b50, true); cen.setUint16(4, 20, true); cen.setUint16(6, 20, true); cen.setUint16(8, 0x0800, true);
-      cen.setUint16(10, 0, true); cen.setUint16(12, hora, true); cen.setUint16(14, dia, true);
-      cen.setUint32(16, crc, true); cen.setUint32(20, a.datos.length, true); cen.setUint32(24, a.datos.length, true);
-      cen.setUint16(28, nombre.length, true); cen.setUint32(42, desplazamiento, true);
-      central.push(new Uint8Array(cen.buffer), nombre);
-      desplazamiento += 30 + nombre.length + a.datos.length;
-    });
-    const largoCentral = central.reduce(function(t, b) { return t + b.length; }, 0);
-    const fin = new DataView(new ArrayBuffer(22));
-    fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true);
-    fin.setUint32(12, largoCentral, true); fin.setUint32(16, desplazamiento, true);
-    const todo = locales.concat(central, [new Uint8Array(fin.buffer)]);
-    const salida = new Uint8Array(todo.reduce(function(t, b) { return t + b.length; }, 0));
-    let pos = 0;
-    todo.forEach(function(b) { salida.set(b, pos); pos += b.length; });
-    return salida;
-  }
-
-  function descargarBlob(blob, nombre) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombre;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function() { a.remove(); URL.revokeObjectURL(url); }, 4000);
-  }
-
-  // El molde va dentro de esta misma página (al final), así no depende de nada externo.
-  let moldeExcel = null;
-  function leerMoldeExcel() {
-    if (!moldeExcel) moldeExcel = JSON.parse(document.getElementById('moldeExcel').textContent);
-    return moldeExcel;
-  }
-
-  // Lista de meses para elegir: los que tienen compras, y siempre el mes actual.
-  let clavesMesesExcel = '';
-  function actualizarMesesExcel() {
-    if (!usuarioActual || (usuarioActual.rol !== 'compras' && usuarioActual.rol !== 'gerencia')) return;
-    const meses = mesesConCompras(comprasParaExcel(datosSolicitudes, datosUrgencias));
-    const actual = hoyISO().slice(0, 7);
-    if (meses.indexOf(actual) === -1) { meses.push(actual); meses.sort().reverse(); }
-    const clave = meses.join(',');
-    if (clave === clavesMesesExcel) return;   // sin cambios: no se toca la lista (por si está abierta)
-    clavesMesesExcel = clave;
-    ['mesExcelC', 'mesExcelG'].forEach(function(id) {
-      const sel = document.getElementById(id);
-      const previo = sel.value;
-      sel.innerHTML = meses.map(function(m) { return '<option value="' + m + '">' + nombreMesExcel(m) + '</option>'; }).join('');
-      sel.value = meses.indexOf(previo) !== -1 ? previo : actual;
-    });
-  }
-
-  // Todo se arma en el momento y sin esperas: en iPhone la hoja de Compartir solo se abre
-  // si no pasó tiempo desde el toque.
-  function exportarExcel(idSelect) {
-    if (!usuarioActual || (usuarioActual.rol !== 'compras' && usuarioActual.rol !== 'gerencia')) return;
-    const mes = document.getElementById(idSelect).value || hoyISO().slice(0, 7);
-    let filas, bytes;
-    try {
-      filas = comprasParaExcel(datosSolicitudes, datosUrgencias).filter(function(f) { return f.fecha.slice(0, 7) === mes; });
-      bytes = armarExcelCompras(leerMoldeExcel(), filas);
-    } catch (err) {
-      mostrarToast('No se pudo generar el Excel: ' + err.message, true);
-      return;
-    }
-    const nombre = nombreArchivoExcel(mes);
-    const blob = new Blob([bytes], { type: MIME_XLSX });
-    const guardar = function() { descargarBlob(blob, nombre); };
-    // En iPhone sale por la hoja de Compartir, igual que el PDF.
-    if (!(ES_IOS && entregarArchivoIOS(blob, nombre, MIME_XLSX, guardar, 'El Excel está listo.'))) guardar();
-    const mesTexto = nombreMesExcel(mes).toLowerCase();
-    mostrarToast(filas.length ? 'Excel de ' + mesTexto + ': ' + (filas.length === 1 ? '1 compra.' : filas.length + ' compras.')
-                              : 'Excel de ' + mesTexto + ': todavía no hay compras en ese mes.');
-  }
-
 
   // ---------- Firma ----------
   let firmaCtx = null;
   let firmaDibujando = false;
   let firmaTieneTrazo = false;
   let idPendienteFirma = null;
-  // El mismo recuadro de firma sirve para dos cosas:
-  //   - el encargado firma para enviar la orden (abrirFirma), y
-  //   - Gerencia firma para aprobarla (pedirFirma, que devuelve la firma o null si cancela).
-  let firmaResolver = null;
-
-  function textosFirma(titulo, resumen, boton) {
-    document.getElementById('firmaTitulo').textContent = titulo;
-    const r = document.getElementById('firmaResumen');
-    r.textContent = resumen || '';
-    r.classList.toggle('visible', !!resumen);
-    document.getElementById('btnFirmaConfirmar').textContent = boton;
-  }
-
-  function pedirFirma(titulo, resumen, boton) {
-    return new Promise(function(resolve) {
-      abrirFirma(null);
-      textosFirma(titulo, resumen, boton);
-      firmaResolver = resolve;
-    });
-  }
 
   function abrirFirma(id) {
-    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(null); }
-    textosFirma('Firmá para enviar la orden', '', 'Confirmar y enviar');
     idPendienteFirma = id;
     const canvas = document.getElementById('canvasFirma');
     firmaCtx = canvas.getContext('2d');
@@ -3105,7 +2322,6 @@
   function cerrarFirma() {
     document.getElementById('modalFirma').style.display = 'none';
     idPendienteFirma = null;
-    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(null); }
   }
 
   function limpiarFirma() {
@@ -3159,8 +2375,6 @@
     const id = idPendienteFirma;
     document.getElementById('modalFirma').style.display = 'none';
     idPendienteFirma = null;
-    // Firma pedida por Gerencia para aprobar: se devuelve a quien la pidió.
-    if (firmaResolver) { const r = firmaResolver; firmaResolver = null; r(firmaDataUrl); return; }
     procesarEnvioConFirma(id, firmaDataUrl);
   }
 
@@ -3202,15 +2416,13 @@
         estado: 'pendiente_compras',
         creada: solicitud.creada,
         enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
-        creadoPor: solicitud.creadoPor,
-        dispositivo: idDispositivo()
+        creadoPor: solicitud.creadoPor
       });
-      avisarCambio('solicitudes', solicitud.id);
     } catch (err) {
       solicitud.firma = null;
       botones.forEach(b => { b.disabled = false; });
       await mostrarAviso('No se envió a Compras',
-        (ES_IOS ? 'El PDF se generó' : 'El PDF se descargó') + ', pero la solicitud no llegó a Compras.\n' + mensajeErrorEnvio(err) +
+        'El PDF se descargó, pero la solicitud no llegó a Compras.\n' + mensajeErrorEnvio(err) +
         '\nQueda en "Generadas" para que la vuelvas a firmar y enviar.');
       return;
     }
@@ -3222,88 +2434,16 @@
     await renderGeneradas();
     await renderHistorial();
     iniciarSeguimientoHistorial();
-    await mostrarAviso('Enviada a Compras', ES_IOS
-      ? 'La orden de compra ya le llegó a Compras. Si no guardaste el PDF, podés compartirlo o guardarlo desde Historial.'
-      : 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
+    await mostrarAviso('Enviada a Compras', 'La orden de compra ya le llegó a Compras. El PDF quedó descargado en tu celular.');
   }
 
-  // ---------- PDF final para el encargado ----------
-  // Cuando la orden ya fue recibida, el PDF del encargado tiene que ser el mismo documento
-  // final que ven Compras y Gerencia (presupuestos, aprobación, compra, recepción y firmas).
-  // Para eso el celular guarda una copia de la orden tal como quedó en Firebase ("remoto")
-  // y arma el PDF con esos datos, exactamente los mismos que usan los paneles.
-  // Antes de la recepción, el PDF del encargado sigue siendo el de su solicitud.
-  function fechaLocalISO(d) {
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-
-  // Las fechas de Firebase se pasan a texto (día local) para poder guardarlas en el celular.
-  function copiaRemota(datos) {
-    const copia = {};
-    Object.keys(datos).forEach(function(k) {
-      const v = datos[k];
-      copia[k] = v && typeof v.toDate === 'function' ? fechaLocalISO(v.toDate()) : v;
-    });
-    return copia;
-  }
-
-  function guardarCopiaFinal(id, datos) {
-    const copia = copiaRemota(datos);
-    [cacheSolicitudes.get(id), seguimientoLocal.get(id)].forEach(function(s) { if (s) s.remoto = copia; });
-    const s = cacheSolicitudes.get(id) || seguimientoLocal.get(id);
-    return s ? guardarLocal(s).catch(function() { /* se vuelve a pedir la próxima vez */ }) : Promise.resolve();
-  }
-
-  // Lee la orden de Firebase y guarda la copia, solo si ya está cerrada como recibida
-  // y el dato viene del servidor (no de una lectura a medias sin conexión).
-  async function traerOrdenFinal(id) {
-    const snap = await db.collection('solicitudes').doc(id).get();
-    const meta = snap.metadata || {};
-    const datos = snap.exists ? (snap.data() || {}) : {};
-    if (datos.estado !== 'recibida' || meta.fromCache || meta.hasPendingWrites) {
-      throw new Error('La orden todavía no figura como recibida en el sistema.');
-    }
-    await guardarCopiaFinal(id, datos);
-  }
-
-  function conLimite(promesa, ms) {
-    return Promise.race([promesa, new Promise(function(_, reject) {
-      setTimeout(function() { reject(new Error('tiempo agotado')); }, ms);
-    })]);
-  }
-
-  function tieneCopiaFinal(s) {
-    return !!(s.remoto && s.remoto.estado === 'recibida');
-  }
-
-  function ordenParaPDF(s) {
-    if (estadoActualLocal(s) === 'recibida' && tieneCopiaFinal(s)) return Object.assign({ id: s.id }, s.remoto);
-    return s;
-  }
-
-  async function descargarPDFDeNuevo(id, boton) {
+  function descargarPDFDeNuevo(id) {
     const solicitud = cacheSolicitudes.get(id);
     if (!solicitud) return;
-    let sinCopiaFinal = false;
-    // Orden recibida sin copia final (por ejemplo, confirmada con una versión anterior):
-    // se pide una sola vez a Firebase. Las siguientes descargas ya son inmediatas.
-    if (estadoActualLocal(solicitud) === 'recibida' && !tieneCopiaFinal(solicitud)) {
-      if (boton) boton.disabled = true;
-      try {
-        await conLimite(traerOrdenFinal(id), 8000);
-      } catch (e) {
-        sinCopiaFinal = true;
-      }
-      if (boton) boton.disabled = false;
-    }
     try {
-      generarPDFOrden(ordenParaPDF(solicitud));
+      generarPDFOrden(solicitud);
     } catch (err) {
       alert('No se pudo generar el PDF: ' + err.message);
-      return;
-    }
-    if (sinCopiaFinal) {
-      mostrarToast('No se pudo traer la orden final (revisá la conexión). Este PDF puede estar incompleto: descargalo de nuevo cuando tengas internet.', true);
     }
   }
 
@@ -3365,37 +2505,22 @@
     mostrarTab(TAB_INICIAL[rol]);
     datosSolicitudes = [];
     datosUrgencias = [];
-    clavesMesesExcel = '';
     estadosPrevios = null;
     urgenciasPrevias = null;
-    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial', 'listaGUrgencias'].forEach(function(id) {
+    ['listaCSolicitudes', 'listaCUrgencias', 'listaCHistorial', 'listaGPorAprobar', 'listaGHistorial'].forEach(function(id) {
       document.getElementById(id).innerHTML = '<p class="placeholder">Cargando...</p>';
     });
-    verHistorialGerencia('ordenes');
-  }
-
-  // Historial de Gerencia: alterna entre las órdenes resueltas y las compras de urgencia.
-  function verHistorialGerencia(vista) {
-    const urgencias = vista === 'urgencias';
-    document.getElementById('btnGHOrdenes').classList.toggle('activo', !urgencias);
-    document.getElementById('btnGHUrgencias').classList.toggle('activo', urgencias);
-    document.getElementById('listaGHistorial').style.display = urgencias ? 'none' : 'block';
-    document.getElementById('listaGUrgencias').style.display = urgencias ? 'block' : 'none';
   }
 
   function entrarComoCompras() {
     prepararPanel('compras');
     escucharSolicitudes();
     escucharUrgencias();
-    prepararAvisos();
   }
 
   function entrarComoGerencia() {
     prepararPanel('gerencia');
     escucharSolicitudes();
-    // Gerencia también ve las compras de urgencia, solo para consultarlas.
-    escucharUrgencias();
-    prepararAvisos();
   }
 
   function detenerEscuchas() {
@@ -3412,7 +2537,6 @@
       datosSolicitudes = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
       avisarCambiosSolicitudes();
       renderPanel();
-      actualizarMesesExcel();
     }, errorDeEscucha);
     desuscribir.push(unsub);
   }
@@ -3422,7 +2546,6 @@
       datosUrgencias = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
       avisarCambiosUrgencias();
       renderPanel();
-      actualizarMesesExcel();
     }, errorDeEscucha);
     desuscribir.push(unsub);
   }
@@ -3449,17 +2572,11 @@
   }
 
   function avisarCambiosUrgencias() {
-    // Se guarda, de cada urgencia, si ya estaba recibida, para avisar cuando eso cambia.
     const actuales = {};
-    datosUrgencias.forEach(function(u) { actuales[u.id] = u.recibidaEn ? 'recibida' : 'sin-recibir'; });
+    datosUrgencias.forEach(function(u) { actuales[u.id] = u.estado; });
     if (urgenciasPrevias) {
       datosUrgencias.forEach(function(u) {
-        if (!urgenciasPrevias[u.id]) {
-          mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
-        } else if (urgenciasPrevias[u.id] === 'sin-recibir' && u.recibidaEn) {
-          // Trazabilidad: Compras y Gerencia se enteran cuando el encargado confirma que la recibió.
-          mostrarToast('El encargado confirmó la recepción de la urgencia: ' + u.detalle + ' (' + u.eess + ')');
-        }
+        if (!urgenciasPrevias[u.id]) mostrarToast('Compra de urgencia informada: ' + u.detalle + ' (' + u.eess + ')');
       });
     }
     urgenciasPrevias = actuales;
@@ -3488,10 +2605,7 @@
     '</div>';
   }
 
-  // soloLectura: para Gerencia, que consulta las urgencias pero no las registra.
-  function tarjetaUrgenciaLectura(u) { return tarjetaUrgencia(u, true); }
-
-  function tarjetaUrgencia(u, soloLectura) {
+  function tarjetaUrgencia(u) {
     return '<div class="card">' +
       '<div class="card-top">' +
         '<span class="card-title">' + escaparHTML(u.detalle) + '</span>' +
@@ -3501,11 +2615,8 @@
       '<div class="card-row"><b>' + formatoPesos(u.importe) + '</b> · ' + escaparHTML(u.proveedor) + '</div>' +
       '<div class="card-row">Comprobante: ' + escaparHTML(u.comprobante) + '</div>' +
       '<div class="card-row card-motivo">Motivo: ' + escaparHTML(u.motivo) + '</div>' +
-      (u.recibidaEn ? '<div class="card-row">Recibida' + (u.recibidaPorNombre ? ' por ' + escaparHTML(u.recibidaPorNombre) : '') + ' el ' + fechaDeTimestamp(u.recibidaEn) + '</div>' : '') +
-      // dos datos independientes: si Compras ya la registró y si el encargado confirmó que la recibió
-      '<div class="card-pie"><span class="chips-urgencia">' + chipEstado(u.estado) +
-        (u.recibidaEn ? '<span class="chip chip-ok">Recibida</span>' : '<span class="chip chip-espera">Falta recibir</span>') + '</span></div>' +
-      (u.estado === 'informada' && soloLectura !== true
+      '<div class="card-pie">' + chipEstado(u.estado) + '</div>' +
+      (u.estado === 'informada'
         ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
         : '') +
     '</div>';
@@ -3544,11 +2655,6 @@
       llenarLista('listaGPorAprobar', porAprobar, tarjetaSolicitud, 'No hay órdenes esperando tu aprobación.');
       llenarLista('listaGHistorial', resueltas, tarjetaSolicitud, 'Todavía no hay órdenes resueltas.');
       ponerBadge('badgeGPorAprobar', porAprobar.length);
-
-      const urgG = datosUrgencias.slice().sort(porCreadaDesc);
-      llenarLista('listaGUrgencias', urgG, tarjetaUrgenciaLectura, 'No hay compras de urgencia informadas.');
-      document.getElementById('gHCuentaOrdenes').textContent = resueltas.length === 1 ? '1 resuelta' : resueltas.length + ' resueltas';
-      document.getElementById('gHCuentaUrgencias').textContent = urgG.length === 1 ? '1 informada' : urgG.length + ' informadas';
     }
 
     if (idDetalleAbierto) renderDetalle();
@@ -3710,8 +2816,6 @@
     if (boton) boton.disabled = true;
     try {
       await db.collection('solicitudes').doc(id).update(cambios);
-      // Solo los cambios de estado generan aviso (cargar o quitar presupuestos, no).
-      if (cambios.estado) avisarCambio('solicitudes', id);
       return true;
     } catch (err) {
       mostrarToast(mensajeErrorEnvio(err), true);
@@ -3779,15 +2883,12 @@
     }
     const indice = parseInt(marcado.value, 10);
     const p = s.presupuestos[indice];
-    // Gerencia aprueba firmando, igual que el encargado al enviar. Sin firma no hay aprobación.
-    // El recuadro de firma muestra qué se está aprobando, así que hace también de confirmación.
-    const firmaGerencia = await pedirFirma('Firmá para aprobar la orden',
-      tituloDe(s) + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Firmar y aprobar');
-    if (!firmaGerencia) return;
+    const ok = await pedirConfirmacion('Aprobar orden',
+      tituloDe(s) + ' (' + s.eess + ')\nPresupuesto: ' + p.proveedor + ' · ' + formatoPesos(p.monto), 'Aprobar');
+    if (!ok) return;
     if (await actualizarSolicitud(s.id, {
       estado: 'aprobada',
       presupuestoElegido: indice,
-      firmaGerencia: firmaGerencia,
       resueltaEn: firebase.firestore.FieldValue.serverTimestamp(),
       resueltaPor: usuarioActual.email
     }, boton)) {
@@ -3838,7 +2939,6 @@
         estado: 'registrada',
         registradaEn: firebase.firestore.FieldValue.serverTimestamp()
       });
-      avisarCambio('urgencias', id, 'registrada');
       mostrarToast('Compra de urgencia registrada.');
     } catch (err) {
       boton.disabled = false;
@@ -3894,8 +2994,7 @@
 </script>
 
   <div id="modalFirma" class="modal-firma">
-    <h2 class="texto-metal" id="firmaTitulo">Firmá para enviar la orden</h2>
-    <p class="firma-resumen" id="firmaResumen"></p>
+    <h2 class="texto-metal">Firmá para enviar la orden</h2>
     <div class="firma-wrap">
       <canvas id="canvasFirma" width="600" height="260"
         onpointerdown="firmaInicio(event)"
@@ -3908,7 +3007,7 @@
     <div class="firma-controles">
       <button type="button" class="btn-secundario" onclick="cerrarFirma()">Cancelar</button>
       <button type="button" class="btn-secundario" onclick="limpiarFirma()">Limpiar</button>
-      <button type="button" class="btn-principal" id="btnFirmaConfirmar" onclick="confirmarFirma()">Confirmar y enviar</button>
+      <button type="button" class="btn-principal" onclick="confirmarFirma()">Confirmar y enviar</button>
     </div>
   </div>
 
@@ -3930,16 +3029,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-
-  <div id="barraPDF" class="barra-pdf" role="status">
-    <span id="barraPDFTexto">El PDF está listo.</span>
-    <button type="button" class="barra-pdf-accion" onclick="compartirPDFIOS(false)">Compartir o guardar</button>
-    <button type="button" class="barra-pdf-cerrar" onclick="ocultarBarraPDF()" aria-label="Cerrar">&times;</button>
-  </div>
-
-  <!-- Molde del Excel de compras: la planilla del cliente (COMPRAS_<MES>.xlsx) con los cambios aprobados.
-       Lo usa exportarExcel(); se arma con excel/preparar_plantilla.py. -->
-  <script type="application/json" id="moldeExcel">{"orden":["[Content_Types].xml","_rels/.rels","xl/_rels/workbook.xml.rels","xl/workbook.xml","xl/worksheets/sheet4.xml","xl/worksheets/sheet5.xml","xl/theme/theme1.xml","xl/styles.xml","xl/sharedStrings.xml","xl/drawings/drawing1.xml","xl/charts/chart1.xml","xl/drawings/drawing2.xml","xl/charts/chart2.xml","xl/worksheets/sheet2.xml","xl/worksheets/sheet1.xml","xl/worksheets/_rels/sheet1.xml.rels","xl/worksheets/_rels/sheet2.xml.rels","xl/worksheets/_rels/sheet3.xml.rels","xl/drawings/_rels/drawing1.xml.rels","xl/drawings/_rels/drawing2.xml.rels","xl/worksheets/sheet3.xml","xl/tables/table1.xml","docProps/core.xml","docProps/app.xml"],"partes":{"xl/worksheets/sheet1.xml":{"pre":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac xr xr2 xr3\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" xr:uid=\"{00000000-0001-0000-0000-000000000000}\"><dimension ref=\"A1:J{{DIM}}\" /><sheetViews><sheetView showGridLines=\"0\" tabSelected=\"1\" workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\" /><selection pane=\"bottomLeft\" activeCell=\"A2\" sqref=\"A2\" /><\/sheetView><\/sheetViews><sheetFormatPr defaultColWidth=\"14.390625\" defaultRowHeight=\"15\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" /><cols><col min=\"1\" max=\"1\" width=\"13.98828125\" customWidth=\"1\" /><col min=\"2\" max=\"2\" width=\"23\" customWidth=\"1\" /><col min=\"3\" max=\"3\" width=\"23.9453125\" customWidth=\"1\" /><col min=\"4\" max=\"4\" width=\"29.99609375\" customWidth=\"1\" /><col min=\"5\" max=\"5\" width=\"27.98046875\" customWidth=\"1\" /><col min=\"6\" max=\"6\" width=\"25.01953125\" customWidth=\"1\" /><col min=\"7\" max=\"7\" width=\"20.04296875\" customWidth=\"1\" /><col min=\"8\" max=\"8\" width=\"16.94921875\" customWidth=\"1\" /><col min=\"9\" max=\"9\" width=\"11.97265625\" customWidth=\"1\" /><col min=\"10\" max=\"10\" width=\"34.97265625\" customWidth=\"1\" /><col min=\"11\" max=\"26\" width=\"8.7421875\" customWidth=\"1\" /><\/cols><sheetData>","fila1":"<row r=\"1\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A1\" s=\"6\" t=\"s\"><v>11<\/v><\/c><c r=\"B1\" s=\"6\" t=\"s\"><v>12<\/v><\/c><c r=\"C1\" s=\"6\" t=\"s\"><v>13<\/v><\/c><c r=\"D1\" s=\"6\" t=\"s\"><v>14<\/v><\/c><c r=\"E1\" s=\"6\" t=\"s\"><v>15<\/v><\/c><c r=\"F1\" s=\"6\" t=\"s\"><v>16<\/v><\/c><c r=\"G1\" s=\"6\" t=\"s\"><v>17<\/v><\/c><c r=\"H1\" s=\"6\" t=\"s\"><v>18<\/v><\/c><c r=\"I1\" s=\"7\" t=\"s\"><v>19<\/v><\/c><c r=\"J1\" s=\"6\" t=\"s\"><v>20<\/v><\/c><\/row>","suf":"<\/sheetData><customSheetViews><customSheetView guid=\"{DE374A81-8A76-4131-A4D2-7B138ED3D36C}\" filter=\"1\" showAutoFilter=\"1\"><autoFilter ref=\"A1:J{{U}}\" xr:uid=\"{DCA46A69-B3DC-0A43-8E86-50091AE8DB36}\" /><extLst><ext uri=\"GoogleSheetsCustomDataVersion1\"><go:sheetsCustomData xmlns:go=\"http://customooxmlschemas.google.com/\" filterViewId=\"601076042\" /><\/ext><\/extLst><\/customSheetView><\/customSheetViews><dataValidations count=\"4\"><dataValidation type=\"list\" allowBlank=\"1\" sqref=\"D2:D{{U}}\" xr:uid=\"{00000000-0002-0000-0000-000000000000}\"><formula1>\"Computación,Imagen,Librería,Limpieza,Obras,Papelería,Ropa,Varios\"<\/formula1><\/dataValidation><dataValidation type=\"list\" allowBlank=\"1\" sqref=\"F2:F{{U}}\" xr:uid=\"{00000000-0002-0000-0000-000001000000}\"><formula1>\"Land Oil SRL,Auca Mahuida SRL,LG Rincon SRL,El Triángulo SRL,auca\"<\/formula1><\/dataValidation><dataValidation type=\"list\" allowBlank=\"1\" sqref=\"B2:B{{U}}\" xr:uid=\"{00000000-0002-0000-0000-000002000000}\"><formula1>\"EESS Axion Junín,EESS Axion Plottier,EESS Axion Neuquén,EESS YPF LG Plottier,EESS LG Rincón,EESS El Triángulo Bs As,EESS El Triángulo Santa Fe,EESS Auca Neuquén,EESS Auca Rincón\"<\/formula1><\/dataValidation><dataValidation type=\"list\" allowBlank=\"1\" sqref=\"I2:I{{U}}\" xr:uid=\"{00000000-0002-0000-0000-000003000000}\"><formula1>\"Sí,No\"<\/formula1><\/dataValidation><\/dataValidations><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0\" footer=\"0\" /><pageSetup orientation=\"landscape\" /><tableParts count=\"1\"><tablePart r:id=\"rId1\" /><\/tableParts><\/worksheet>","patrones":[["spans=\"1:10\" ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\"",[]],["ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\"",[]],["spans=\"1:10\" x14ac:dyDescent=\"0.2\"",[17,13,12,13,12,13,12,14,13,12]]],"codigo":"222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222220000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},"xl/worksheets/sheet2.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac xr xr2 xr3\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" xr:uid=\"{00000000-0001-0000-0100-000000000000}\"><dimension ref=\"A1:B1000\" /><sheetViews><sheetView workbookViewId=\"0\" /><\/sheetViews><sheetFormatPr defaultColWidth=\"14.390625\" defaultRowHeight=\"15\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" /><cols><col min=\"1\" max=\"1\" width=\"34.03125\" customWidth=\"1\" /><col min=\"2\" max=\"2\" width=\"20.04296875\" customWidth=\"1\" /><col min=\"3\" max=\"26\" width=\"8.7421875\" customWidth=\"1\" /><\/cols><sheetData><row r=\"1\" spans=\"1:2\" ht=\"18.75\" x14ac:dyDescent=\"0.25\"><c r=\"A1\" s=\"26\" t=\"s\"><v>26<\/v><\/c><c r=\"B1\" s=\"27\" /><\/row><row r=\"2\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A2\" s=\"18\" t=\"s\"><v>14<\/v><\/c><c r=\"B2\" s=\"18\" t=\"s\"><v>28<\/v><\/c><\/row><row r=\"3\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A3\" s=\"4\" t=\"s\"><v>43<\/v><\/c><c r=\"B3\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A3,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B3}}<\/v><\/c><\/row><row r=\"4\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A4\" s=\"4\" t=\"s\"><v>44<\/v><\/c><c r=\"B4\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A4,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B4}}<\/v><\/c><\/row><row r=\"5\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A5\" s=\"4\" t=\"s\"><v>45<\/v><\/c><c r=\"B5\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A5,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B5}}<\/v><\/c><\/row><row r=\"6\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A6\" s=\"4\" t=\"s\"><v>46<\/v><\/c><c r=\"B6\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A6,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B6}}<\/v><\/c><\/row><row r=\"7\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A7\" s=\"4\" t=\"s\"><v>3<\/v><\/c><c r=\"B7\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A7,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B7}}<\/v><\/c><\/row><row r=\"8\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A8\" s=\"4\" t=\"s\"><v>47<\/v><\/c><c r=\"B8\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A8,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B8}}<\/v><\/c><\/row><row r=\"9\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A9\" s=\"4\" t=\"s\"><v>48<\/v><\/c><c r=\"B9\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A9,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B9}}<\/v><\/c><\/row><row r=\"10\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A10\" s=\"4\" t=\"s\"><v>49<\/v><\/c><c r=\"B10\" s=\"5\"><f>SUMIF('Base de Compras'!$D$2:$D${{U}},A10,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{C!B10}}<\/v><\/c><\/row><row r=\"11\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A11\" s=\"21\" /><c r=\"B11\" s=\"22\"><f>SUM(B3:B10)<\/f><v>{{C!B11}}<\/v><\/c><\/row>{{VACIAS:21:1000: ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" }}<\/sheetData><mergeCells count=\"1\"><mergeCell ref=\"A1:B1\" /><\/mergeCells><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0\" footer=\"0\" /><pageSetup orientation=\"landscape\" /><drawing r:id=\"rId1\" /><\/worksheet>","xl/worksheets/sheet3.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac xr xr2 xr3\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" xr:uid=\"{00000000-0001-0000-0200-000000000000}\"><dimension ref=\"A1:B1000\" /><sheetViews><sheetView workbookViewId=\"0\" /><\/sheetViews><sheetFormatPr defaultColWidth=\"14.390625\" defaultRowHeight=\"15\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" /><cols><col min=\"1\" max=\"1\" width=\"29.99609375\" customWidth=\"1\" /><col min=\"2\" max=\"2\" width=\"20.04296875\" customWidth=\"1\" /><col min=\"3\" max=\"26\" width=\"8.7421875\" customWidth=\"1\" /><\/cols><sheetData><row r=\"1\" spans=\"1:2\" ht=\"18.75\" x14ac:dyDescent=\"0.25\"><c r=\"A1\" s=\"26\" t=\"s\"><v>31<\/v><\/c><c r=\"B1\" s=\"27\" /><\/row><row r=\"2\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A2\" s=\"18\" t=\"s\"><v>12<\/v><\/c><c r=\"B2\" s=\"18\" t=\"s\"><v>28<\/v><\/c><\/row><row r=\"3\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A3\" s=\"4\" t=\"s\"><v>10<\/v><\/c><c r=\"B3\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A3,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B3}}<\/v><\/c><\/row><row r=\"4\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A4\" s=\"4\" t=\"s\"><v>21<\/v><\/c><c r=\"B4\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A4,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B4}}<\/v><\/c><\/row><row r=\"5\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A5\" s=\"4\" t=\"s\"><v>22<\/v><\/c><c r=\"B5\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A5,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B5}}<\/v><\/c><\/row><row r=\"6\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A6\" s=\"4\" t=\"s\"><v>23<\/v><\/c><c r=\"B6\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A6,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B6}}<\/v><\/c><\/row><row r=\"7\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A7\" s=\"4\" t=\"s\"><v>25<\/v><\/c><c r=\"B7\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A7,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B7}}<\/v><\/c><\/row><row r=\"8\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A8\" s=\"4\" t=\"s\"><v>27<\/v><\/c><c r=\"B8\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A8,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B8}}<\/v><\/c><\/row><row r=\"9\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A9\" s=\"4\" t=\"s\"><v>29<\/v><\/c><c r=\"B9\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A9,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B9}}<\/v><\/c><\/row><row r=\"10\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A10\" s=\"4\" t=\"s\"><v>32<\/v><\/c><c r=\"B10\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A10,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B10}}<\/v><\/c><\/row><row r=\"11\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A11\" s=\"4\" t=\"s\"><v>33<\/v><\/c><c r=\"B11\" s=\"5\"><f>SUMIF('Base de Compras'!$B$2:$B${{U}},A11,'Base de Compras'!$H$2:$H${{U}})<\/f><v>{{E!B11}}<\/v><\/c><\/row><row r=\"12\" spans=\"1:2\" x14ac:dyDescent=\"0.2\"><c r=\"A12\" s=\"23\" t=\"s\"><v>34<\/v><\/c><c r=\"B12\" s=\"24\"><f>SUM(B3:B11)<\/f><v>{{E!B12}}<\/v><\/c><\/row>{{VACIAS:21:1000: ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" }}<\/sheetData><mergeCells count=\"1\"><mergeCell ref=\"A1:B1\" /><\/mergeCells><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0\" footer=\"0\" /><pageSetup orientation=\"landscape\" /><drawing r:id=\"rId1\" /><\/worksheet>","xl/worksheets/sheet4.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac xr xr2 xr3\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" xr:uid=\"{00000000-0001-0000-0300-000000000000}\"><dimension ref=\"A1:I1000\" /><sheetViews><sheetView workbookViewId=\"0\" /><\/sheetViews><sheetFormatPr defaultColWidth=\"14.390625\" defaultRowHeight=\"15\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" /><cols><col min=\"1\" max=\"1\" width=\"29.99609375\" customWidth=\"1\" /><col min=\"2\" max=\"2\" width=\"18.0234375\" customWidth=\"1\" /><col min=\"3\" max=\"3\" width=\"29.99609375\" customWidth=\"1\" /><col min=\"4\" max=\"4\" width=\"18.0234375\" customWidth=\"1\" /><col min=\"5\" max=\"6\" width=\"20.04296875\" customWidth=\"1\" /><col min=\"7\" max=\"7\" width=\"13.5859375\" customWidth=\"1\" /><col min=\"8\" max=\"8\" width=\"12.9140625\" customWidth=\"1\" /><col min=\"9\" max=\"9\" width=\"12.64453125\" customWidth=\"1\" /><col min=\"10\" max=\"10\" width=\"14.796875\" customWidth=\"1\" /><col min=\"11\" max=\"26\" width=\"8.7421875\" customWidth=\"1\" /><\/cols><sheetData><row r=\"1\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A1\" s=\"1\" t=\"s\"><v>0<\/v><\/c><c r=\"B1\" s=\"2\" t=\"s\"><v>43<\/v><\/c><c r=\"C1\" s=\"2\" t=\"s\"><v>44<\/v><\/c><c r=\"D1\" s=\"1\" t=\"s\"><v>45<\/v><\/c><c r=\"E1\" s=\"1\" t=\"s\"><v>46<\/v><\/c><c r=\"F1\" s=\"2\" t=\"s\"><v>3<\/v><\/c><c r=\"G1\" s=\"3\" t=\"s\"><v>47<\/v><\/c><c r=\"H1\" s=\"3\" t=\"s\"><v>48<\/v><\/c><c r=\"I1\" s=\"3\" t=\"s\"><v>49<\/v><\/c><\/row><row r=\"2\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A2\" s=\"4\" t=\"s\"><v>10<\/v><\/c><c r=\"B2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B2}}<\/v><\/c><c r=\"C2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C2}}<\/v><\/c><c r=\"D2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D2}}<\/v><\/c><c r=\"E2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E2}}<\/v><\/c><c r=\"F2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F2}}<\/v><\/c><c r=\"G2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G2}}<\/v><\/c><c r=\"H2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H2}}<\/v><\/c><c r=\"I2\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A2,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I2}}<\/v><\/c><\/row><row r=\"3\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A3\" s=\"4\" t=\"s\"><v>21<\/v><\/c><c r=\"B3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B3}}<\/v><\/c><c r=\"C3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C3}}<\/v><\/c><c r=\"D3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D3}}<\/v><\/c><c r=\"E3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E3}}<\/v><\/c><c r=\"F3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F3}}<\/v><\/c><c r=\"G3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G3}}<\/v><\/c><c r=\"H3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H3}}<\/v><\/c><c r=\"I3\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A3,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I3}}<\/v><\/c><\/row><row r=\"4\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A4\" s=\"4\" t=\"s\"><v>22<\/v><\/c><c r=\"B4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B4}}<\/v><\/c><c r=\"C4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C4}}<\/v><\/c><c r=\"D4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D4}}<\/v><\/c><c r=\"E4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E4}}<\/v><\/c><c r=\"F4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F4}}<\/v><\/c><c r=\"G4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G4}}<\/v><\/c><c r=\"H4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H4}}<\/v><\/c><c r=\"I4\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A4,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I4}}<\/v><\/c><\/row><row r=\"5\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A5\" s=\"4\" t=\"s\"><v>23<\/v><\/c><c r=\"B5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B5}}<\/v><\/c><c r=\"C5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C5}}<\/v><\/c><c r=\"D5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D5}}<\/v><\/c><c r=\"E5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E5}}<\/v><\/c><c r=\"F5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F5}}<\/v><\/c><c r=\"G5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G5}}<\/v><\/c><c r=\"H5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H5}}<\/v><\/c><c r=\"I5\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A5,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I5}}<\/v><\/c><\/row><row r=\"6\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A6\" s=\"4\" t=\"s\"><v>25<\/v><\/c><c r=\"B6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B6}}<\/v><\/c><c r=\"C6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C6}}<\/v><\/c><c r=\"D6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D6}}<\/v><\/c><c r=\"E6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E6}}<\/v><\/c><c r=\"F6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F6}}<\/v><\/c><c r=\"G6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G6}}<\/v><\/c><c r=\"H6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H6}}<\/v><\/c><c r=\"I6\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A6,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I6}}<\/v><\/c><\/row><row r=\"7\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A7\" s=\"4\" t=\"s\"><v>27<\/v><\/c><c r=\"B7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B7}}<\/v><\/c><c r=\"C7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C7}}<\/v><\/c><c r=\"D7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D7}}<\/v><\/c><c r=\"E7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E7}}<\/v><\/c><c r=\"F7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F7}}<\/v><\/c><c r=\"G7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G7}}<\/v><\/c><c r=\"H7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H7}}<\/v><\/c><c r=\"I7\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A7,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I7}}<\/v><\/c><\/row><row r=\"8\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A8\" s=\"4\" t=\"s\"><v>29<\/v><\/c><c r=\"B8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B8}}<\/v><\/c><c r=\"C8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C8}}<\/v><\/c><c r=\"D8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D8}}<\/v><\/c><c r=\"E8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E8}}<\/v><\/c><c r=\"F8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F8}}<\/v><\/c><c r=\"G8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G8}}<\/v><\/c><c r=\"H8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H8}}<\/v><\/c><c r=\"I8\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A8,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I8}}<\/v><\/c><\/row><row r=\"9\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A9\" s=\"4\" t=\"s\"><v>32<\/v><\/c><c r=\"B9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B9}}<\/v><\/c><c r=\"C9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C9}}<\/v><\/c><c r=\"D9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D9}}<\/v><\/c><c r=\"E9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E9}}<\/v><\/c><c r=\"F9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F9}}<\/v><\/c><c r=\"G9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G9}}<\/v><\/c><c r=\"H9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H9}}<\/v><\/c><c r=\"I9\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A9,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I9}}<\/v><\/c><\/row><row r=\"10\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A10\" s=\"4\" t=\"s\"><v>33<\/v><\/c><c r=\"B10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},B$1)<\/f><v>{{X!B10}}<\/v><\/c><c r=\"C10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},C$1)<\/f><v>{{X!C10}}<\/v><\/c><c r=\"D10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},D$1)<\/f><v>{{X!D10}}<\/v><\/c><c r=\"E10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},E$1)<\/f><v>{{X!E10}}<\/v><\/c><c r=\"F10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},F$1)<\/f><v>{{X!F10}}<\/v><\/c><c r=\"G10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},G$1)<\/f><v>{{X!G10}}<\/v><\/c><c r=\"H10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},H$1)<\/f><v>{{X!H10}}<\/v><\/c><c r=\"I10\" s=\"5\"><f>SUMIFS('Base de Compras'!$H$2:$H${{U}},'Base de Compras'!$B$2:$B${{U}},$A10,'Base de Compras'!$D$2:$D${{U}},I$1)<\/f><v>{{X!I10}}<\/v><\/c><\/row><row r=\"11\" spans=\"1:10\" x14ac:dyDescent=\"0.2\"><c r=\"A11\" s=\"23\" t=\"s\"><v>34<\/v><\/c><c r=\"B11\" s=\"24\"><f t=\"shared\" ref=\"B11:I11\" si=\"0\">SUM(B2:B10)<\/f><v>{{X!B11}}<\/v><\/c><c r=\"C11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!C11}}<\/v><\/c><c r=\"D11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!D11}}<\/v><\/c><c r=\"E11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!E11}}<\/v><\/c><c r=\"F11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!F11}}<\/v><\/c><c r=\"G11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!G11}}<\/v><\/c><c r=\"H11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!H11}}<\/v><\/c><c r=\"I11\" s=\"24\"><f t=\"shared\" si=\"0\" /><v>{{X!I11}}<\/v><\/c><\/row>{{VACIAS:21:1000: ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" }}<\/sheetData><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0\" footer=\"0\" /><pageSetup orientation=\"landscape\" /><\/worksheet>","xl/worksheets/sheet5.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac xr xr2 xr3\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" xr:uid=\"{00000000-0001-0000-0400-000000000000}\"><dimension ref=\"A1:D1000\" /><sheetViews><sheetView workbookViewId=\"0\" /><\/sheetViews><sheetFormatPr defaultColWidth=\"14.390625\" defaultRowHeight=\"15\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" /><cols><col min=\"1\" max=\"1\" width=\"13.71875\" customWidth=\"1\" /><col min=\"2\" max=\"2\" width=\"12.5078125\" customWidth=\"1\" /><col min=\"3\" max=\"3\" width=\"12.9140625\" customWidth=\"1\" /><col min=\"4\" max=\"4\" width=\"13.5859375\" customWidth=\"1\" /><col min=\"5\" max=\"26\" width=\"8.7421875\" customWidth=\"1\" /><\/cols><sheetData><row r=\"1\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A1\" s=\"4\" t=\"s\"><v>35<\/v><\/c><c r=\"B1\" s=\"4\" t=\"s\"><v>12<\/v><\/c><c r=\"C1\" s=\"4\" t=\"s\"><v>36<\/v><\/c><c r=\"D1\" s=\"4\" t=\"s\"><v>16<\/v><\/c><\/row><row r=\"2\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A2\" s=\"4\" t=\"s\"><v>43<\/v><\/c><c r=\"B2\" s=\"4\" t=\"s\"><v>10<\/v><\/c><c r=\"C2\" s=\"4\" t=\"s\"><v>37<\/v><\/c><c r=\"D2\" s=\"4\" t=\"s\"><v>38<\/v><\/c><\/row><row r=\"3\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A3\" s=\"4\" t=\"s\"><v>44<\/v><\/c><c r=\"B3\" s=\"4\" t=\"s\"><v>21<\/v><\/c><c r=\"C3\" s=\"4\" t=\"s\"><v>24<\/v><\/c><c r=\"D3\" s=\"4\" t=\"s\"><v>39<\/v><\/c><\/row><row r=\"4\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A4\" s=\"4\" t=\"s\"><v>45<\/v><\/c><c r=\"B4\" s=\"4\" t=\"s\"><v>22<\/v><\/c><c r=\"D4\" s=\"4\" t=\"s\"><v>40<\/v><\/c><\/row><row r=\"5\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A5\" s=\"4\" t=\"s\"><v>46<\/v><\/c><c r=\"B5\" s=\"4\" t=\"s\"><v>23<\/v><\/c><c r=\"D5\" s=\"4\" t=\"s\"><v>41<\/v><\/c><\/row><row r=\"6\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A6\" s=\"4\" t=\"s\"><v>3<\/v><\/c><c r=\"B6\" s=\"4\" t=\"s\"><v>25<\/v><\/c><\/row><row r=\"7\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A7\" s=\"4\" t=\"s\"><v>47<\/v><\/c><c r=\"B7\" s=\"4\" t=\"s\"><v>27<\/v><\/c><\/row><row r=\"8\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A8\" s=\"4\" t=\"s\"><v>48<\/v><\/c><c r=\"B8\" s=\"4\" t=\"s\"><v>29<\/v><\/c><\/row><row r=\"9\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"A9\" s=\"4\" t=\"s\"><v>49<\/v><\/c><c r=\"B9\" s=\"4\" t=\"s\"><v>32<\/v><\/c><\/row><row r=\"10\" spans=\"1:4\" x14ac:dyDescent=\"0.2\"><c r=\"B10\" s=\"4\" t=\"s\"><v>33<\/v><\/c><\/row>{{VACIAS:21:1000: ht=\"15.75\" customHeight=\"1\" x14ac:dyDescent=\"0.2\" }}<\/sheetData><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0\" footer=\"0\" /><pageSetup orientation=\"landscape\" /><\/worksheet>","xl/sharedStrings.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"80\" uniqueCount=\"50\"><si><t>EESS / DESTINO<\/t><\/si><si><t>varios<\/t><\/si><si><t>infraestructura<\/t><\/si><si><t>Obras<\/t><\/si><si><t>Mercaderías<\/t><\/si><si><t>ropa<\/t><\/si><si><t>PAPELRIA<\/t><\/si><si><t>libreria<\/t><\/si><si><t>limpieza<\/t><\/si><si><t>computacion<\/t><\/si><si><t>EESS Axion Junín<\/t><\/si><si><t>Fecha<\/t><\/si><si><t>EESS / Destino<\/t><\/si><si><t>Proveedor<\/t><\/si><si><t>Categoría<\/t><\/si><si><t>Detalle<\/t><\/si><si><t>Razón Social<\/t><\/si><si><t>N.º Factura<\/t><\/si><si><t>Importe<\/t><\/si><si><t>RECIBIO<\/t><\/si><si><t>Observaciones<\/t><\/si><si><t>EESS Axion Plottier<\/t><\/si><si><t>EESS Axion Neuquén<\/t><\/si><si><t>EESS YPF LG Plottier<\/t><\/si><si><t>No<\/t><\/si><si><t>EESS LG Rincón<\/t><\/si><si><t>CONTROL POR CATEGORÍA<\/t><\/si><si><t>EESS El Triángulo Bs As<\/t><\/si><si><t>Total comprado<\/t><\/si><si><t>EESS El Triángulo Santa Fe<\/t><\/si><si><t>papeleria<\/t><\/si><si><t>CONTROL POR EESS / DESTINO<\/t><\/si><si><t>EESS Auca Neuquén<\/t><\/si><si><t>EESS Auca Rincón<\/t><\/si><si><t>TOTAL<\/t><\/si><si><t>Categorías<\/t><\/si><si><t>Recibido<\/t><\/si><si><t>Sí<\/t><\/si><si><t>Auca Mahuida SRL<\/t><\/si><si><t>LG Rincon SRL<\/t><\/si><si><t>El Triángulo SRL<\/t><\/si><si><t>Land Oil SRL<\/t><\/si><si><t>papelera<\/t><\/si><si><t>Computación<\/t><\/si><si><t>Imagen<\/t><\/si><si><t>Librería<\/t><\/si><si><t>Limpieza<\/t><\/si><si><t>Papelería<\/t><\/si><si><t>Ropa<\/t><\/si><si><t>Varios<\/t><\/si><\/sst>","xl/charts/chart1.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:c16r2=\"http://schemas.microsoft.com/office/drawing/2015/06/chart\"><c:date1904 val=\"0\" /><c:lang val=\"es-ES\" /><c:roundedCorners val=\"1\" /><c:style val=\"2\" /><c:chart><c:autoTitleDeleted val=\"1\" /><c:plotArea><c:layout /><c:pieChart><c:varyColors val=\"1\" /><c:ser><c:idx val=\"0\" /><c:order val=\"0\" /><c:dPt><c:idx val=\"0\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"4A86E8\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"1\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"C0504D\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"2\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"9BBB59\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"3\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"8064A2\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"4\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"4BACC6\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"5\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"F79646\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"6\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"FFC000\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:dPt><c:idx val=\"7\" /><c:bubble3D val=\"0\" /><c:spPr><a:solidFill><a:srgbClr val=\"7F7F7F\" /><\/a:solidFill><\/c:spPr><\/c:dPt><c:cat><c:strRef><c:f>'Por Categoría'!$A$3:$A$10<\/c:f><c:strCache><c:ptCount val=\"8\" /><c:pt idx=\"0\"><c:v>Computación<\/c:v><\/c:pt><c:pt idx=\"1\"><c:v>Imagen<\/c:v><\/c:pt><c:pt idx=\"2\"><c:v>Librería<\/c:v><\/c:pt><c:pt idx=\"3\"><c:v>Limpieza<\/c:v><\/c:pt><c:pt idx=\"4\"><c:v>Obras<\/c:v><\/c:pt><c:pt idx=\"5\"><c:v>Papelería<\/c:v><\/c:pt><c:pt idx=\"6\"><c:v>Ropa<\/c:v><\/c:pt><c:pt idx=\"7\"><c:v>Varios<\/c:v><\/c:pt><\/c:strCache><\/c:strRef><\/c:cat><c:val><c:numRef><c:f>'Por Categoría'!$B$3:$B$10<\/c:f><c:numCache><c:formatCode>\\$\\ #,##0<\/c:formatCode><c:ptCount val=\"8\" /><c:pt idx=\"0\"><c:v>{{C!B3}}<\/c:v><\/c:pt><c:pt idx=\"1\"><c:v>{{C!B4}}<\/c:v><\/c:pt><c:pt idx=\"2\"><c:v>{{C!B5}}<\/c:v><\/c:pt><c:pt idx=\"3\"><c:v>{{C!B6}}<\/c:v><\/c:pt><c:pt idx=\"4\"><c:v>{{C!B7}}<\/c:v><\/c:pt><c:pt idx=\"5\"><c:v>{{C!B8}}<\/c:v><\/c:pt><c:pt idx=\"6\"><c:v>{{C!B9}}<\/c:v><\/c:pt><c:pt idx=\"7\"><c:v>{{C!B10}}<\/c:v><\/c:pt><\/c:numCache><\/c:numRef><\/c:val><c:extLst><c:ext uri=\"{C3380CC4-5D6E-409C-BE32-E72D297353CC}\" xmlns:c16=\"http://schemas.microsoft.com/office/drawing/2014/chart\"><c16:uniqueId val=\"{00000000-A6D0-E24F-9A67-C8F8A3E33205}\" /><\/c:ext><\/c:extLst><\/c:ser><c:dLbls><c:showLegendKey val=\"0\" /><c:showVal val=\"0\" /><c:showCatName val=\"0\" /><c:showSerName val=\"0\" /><c:showPercent val=\"0\" /><c:showBubbleSize val=\"0\" /><c:showLeaderLines val=\"1\" /><\/c:dLbls><c:firstSliceAng val=\"0\" /><\/c:pieChart><\/c:plotArea><c:legend><c:legendPos val=\"r\" /><c:overlay val=\"0\" /><c:txPr><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"1A1A1A\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr lang=\"es-ES\" /><\/a:p><\/c:txPr><\/c:legend><c:plotVisOnly val=\"1\" /><c:dispBlanksAs val=\"zero\" /><c:showDLblsOverMax val=\"1\" /><\/c:chart><c:printSettings><c:headerFooter /><c:pageMargins b=\"0.75\" l=\"0.7\" r=\"0.7\" t=\"0.75\" header=\"0.3\" footer=\"0.3\" /><c:pageSetup /><\/c:printSettings><\/c:chartSpace>","xl/charts/chart2.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:c16r2=\"http://schemas.microsoft.com/office/drawing/2015/06/chart\"><c:date1904 val=\"0\" /><c:lang val=\"es-ES\" /><c:roundedCorners val=\"1\" /><c:style val=\"2\" /><c:chart><c:autoTitleDeleted val=\"1\" /><c:plotArea><c:layout /><c:barChart><c:barDir val=\"col\" /><c:grouping val=\"clustered\" /><c:varyColors val=\"1\" /><c:ser><c:idx val=\"0\" /><c:order val=\"0\" /><c:spPr><a:solidFill><a:schemeClr val=\"accent1\" /><\/a:solidFill><a:ln cmpd=\"sng\"><a:noFill /><\/a:ln><\/c:spPr><c:invertIfNegative val=\"1\" /><c:cat><c:strRef><c:f>'Por EESS'!$A$3:$A$11<\/c:f><c:strCache><c:ptCount val=\"9\" /><c:pt idx=\"0\"><c:v>EESS Axion Junín<\/c:v><\/c:pt><c:pt idx=\"1\"><c:v>EESS Axion Plottier<\/c:v><\/c:pt><c:pt idx=\"2\"><c:v>EESS Axion Neuquén<\/c:v><\/c:pt><c:pt idx=\"3\"><c:v>EESS YPF LG Plottier<\/c:v><\/c:pt><c:pt idx=\"4\"><c:v>EESS LG Rincón<\/c:v><\/c:pt><c:pt idx=\"5\"><c:v>EESS El Triángulo Bs As<\/c:v><\/c:pt><c:pt idx=\"6\"><c:v>EESS El Triángulo Santa Fe<\/c:v><\/c:pt><c:pt idx=\"7\"><c:v>EESS Auca Neuquén<\/c:v><\/c:pt><c:pt idx=\"8\"><c:v>EESS Auca Rincón<\/c:v><\/c:pt><\/c:strCache><\/c:strRef><\/c:cat><c:val><c:numRef><c:f>'Por EESS'!$B$3:$B$11<\/c:f><c:numCache><c:formatCode>\\$\\ #,##0<\/c:formatCode><c:ptCount val=\"9\" /><c:pt idx=\"0\"><c:v>{{E!B3}}<\/c:v><\/c:pt><c:pt idx=\"1\"><c:v>{{E!B4}}<\/c:v><\/c:pt><c:pt idx=\"2\"><c:v>{{E!B5}}<\/c:v><\/c:pt><c:pt idx=\"3\"><c:v>{{E!B6}}<\/c:v><\/c:pt><c:pt idx=\"4\"><c:v>{{E!B7}}<\/c:v><\/c:pt><c:pt idx=\"5\"><c:v>{{E!B8}}<\/c:v><\/c:pt><c:pt idx=\"6\"><c:v>{{E!B9}}<\/c:v><\/c:pt><c:pt idx=\"7\"><c:v>{{E!B10}}<\/c:v><\/c:pt><c:pt idx=\"8\"><c:v>{{E!B11}}<\/c:v><\/c:pt><\/c:numCache><\/c:numRef><\/c:val><c:extLst><c:ext uri=\"{6F2FDCE9-48DA-4B69-8628-5D25D57E5C99}\" xmlns:c14=\"http://schemas.microsoft.com/office/drawing/2007/8/2/chart\"><c14:invertSolidFillFmt><c14:spPr xmlns:c14=\"http://schemas.microsoft.com/office/drawing/2007/8/2/chart\"><a:solidFill><a:srgbClr val=\"FFFFFF\" /><\/a:solidFill><a:ln cmpd=\"sng\"><a:noFill /><\/a:ln><\/c14:spPr><\/c14:invertSolidFillFmt><\/c:ext><c:ext uri=\"{C3380CC4-5D6E-409C-BE32-E72D297353CC}\" xmlns:c16=\"http://schemas.microsoft.com/office/drawing/2014/chart\"><c16:uniqueId val=\"{00000000-5331-914F-8AA2-21EDCD8246B4}\" /><\/c:ext><\/c:extLst><\/c:ser><c:dLbls><c:showLegendKey val=\"0\" /><c:showVal val=\"0\" /><c:showCatName val=\"0\" /><c:showSerName val=\"0\" /><c:showPercent val=\"0\" /><c:showBubbleSize val=\"0\" /><\/c:dLbls><c:gapWidth val=\"150\" /><c:axId val=\"229609904\" /><c:axId val=\"29255248\" /><\/c:barChart><c:catAx><c:axId val=\"229609904\" /><c:scaling><c:orientation val=\"minMax\" /><\/c:scaling><c:delete val=\"0\" /><c:axPos val=\"b\" /><c:title><c:tx><c:rich><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"000000\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr /><\/a:p><\/c:rich><\/c:tx><c:overlay val=\"0\" /><\/c:title><c:numFmt formatCode=\"General\" sourceLinked=\"1\" /><c:majorTickMark val=\"none\" /><c:minorTickMark val=\"none\" /><c:tickLblPos val=\"nextTo\" /><c:spPr><a:ln><a:noFill /><\/a:ln><\/c:spPr><c:txPr><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"000000\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr lang=\"es-ES\" /><\/a:p><\/c:txPr><c:crossAx val=\"29255248\" /><c:crosses val=\"autoZero\" /><c:auto val=\"1\" /><c:lblAlgn val=\"ctr\" /><c:lblOffset val=\"100\" /><c:noMultiLvlLbl val=\"1\" /><\/c:catAx><c:valAx><c:axId val=\"29255248\" /><c:scaling><c:orientation val=\"minMax\" /><\/c:scaling><c:delete val=\"0\" /><c:axPos val=\"l\" /><c:majorGridlines><c:spPr><a:ln><a:solidFill><a:srgbClr val=\"B7B7B7\" /><\/a:solidFill><\/a:ln><\/c:spPr><\/c:majorGridlines><c:minorGridlines><c:spPr><a:ln><a:solidFill><a:srgbClr val=\"CCCCCC\"><a:alpha val=\"0\" /><\/a:srgbClr><\/a:solidFill><\/a:ln><\/c:spPr><\/c:minorGridlines><c:title><c:tx><c:rich><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"000000\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr /><\/a:p><\/c:rich><\/c:tx><c:overlay val=\"0\" /><\/c:title><c:numFmt formatCode=\"\\$\\ #,##0\" sourceLinked=\"1\" /><c:majorTickMark val=\"none\" /><c:minorTickMark val=\"none\" /><c:tickLblPos val=\"nextTo\" /><c:spPr><a:ln><a:noFill /><\/a:ln><\/c:spPr><c:txPr><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"000000\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr lang=\"es-ES\" /><\/a:p><\/c:txPr><c:crossAx val=\"229609904\" /><c:crosses val=\"autoZero\" /><c:crossBetween val=\"between\" /><\/c:valAx><\/c:plotArea><c:legend><c:legendPos val=\"r\" /><c:overlay val=\"0\" /><c:txPr><a:bodyPr /><a:lstStyle /><a:p><a:pPr lvl=\"0\"><a:defRPr b=\"0\"><a:solidFill><a:srgbClr val=\"1A1A1A\" /><\/a:solidFill><a:latin typeface=\"+mn-lt\" /><\/a:defRPr><\/a:pPr><a:endParaRPr lang=\"es-ES\" /><\/a:p><\/c:txPr><\/c:legend><c:plotVisOnly val=\"1\" /><c:dispBlanksAs val=\"zero\" /><c:showDLblsOverMax val=\"1\" /><\/c:chart><c:printSettings><c:headerFooter /><c:pageMargins b=\"0.75\" l=\"0.7\" r=\"0.7\" t=\"0.75\" header=\"0.3\" footer=\"0.3\" /><c:pageSetup /><\/c:printSettings><\/c:chartSpace>","xl/tables/table1.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<table xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"xr xr3\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr3=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision3\" id=\"1\" xr:uid=\"{00000000-000C-0000-FFFF-FFFF00000000}\" name=\"BaseCompras\" displayName=\"BaseCompras\" ref=\"A1:J{{U}}\"><tableColumns count=\"10\"><tableColumn id=\"1\" xr3:uid=\"{00000000-0010-0000-0000-000001000000}\" name=\"Fecha\" /><tableColumn id=\"2\" xr3:uid=\"{00000000-0010-0000-0000-000002000000}\" name=\"EESS / Destino\" /><tableColumn id=\"3\" xr3:uid=\"{00000000-0010-0000-0000-000003000000}\" name=\"Proveedor\" /><tableColumn id=\"4\" xr3:uid=\"{00000000-0010-0000-0000-000004000000}\" name=\"Categoría\" /><tableColumn id=\"5\" xr3:uid=\"{00000000-0010-0000-0000-000005000000}\" name=\"Detalle\" /><tableColumn id=\"6\" xr3:uid=\"{00000000-0010-0000-0000-000006000000}\" name=\"Razón Social\" /><tableColumn id=\"7\" xr3:uid=\"{00000000-0010-0000-0000-000007000000}\" name=\"N.º Factura\" /><tableColumn id=\"8\" xr3:uid=\"{00000000-0010-0000-0000-000008000000}\" name=\"Importe\" /><tableColumn id=\"9\" xr3:uid=\"{00000000-0010-0000-0000-000009000000}\" name=\"RECIBIO\" /><tableColumn id=\"10\" xr3:uid=\"{00000000-0010-0000-0000-00000A000000}\" name=\"Observaciones\" /><\/tableColumns><tableStyleInfo name=\"Base de Compras-style\" showFirstColumn=\"1\" showLastColumn=\"1\" showRowStripes=\"1\" showColumnStripes=\"0\" /><\/table>","xl/workbook.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x15 xr xr6 xr10 xr2\" xmlns:x15=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/main\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr6=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision6\" xmlns:xr10=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision10\" xmlns:xr2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/revision2\"><fileVersion appName=\"xl\" lastEdited=\"7\" lowestEdited=\"7\" rupBuild=\"30430\" /><workbookPr /><xr:revisionPtr revIDLastSave=\"0\" documentId=\"8_{6018DA58-5C36-6842-A1D0-A0C79E2EB92D}\" xr6:coauthVersionLast=\"47\" xr6:coauthVersionMax=\"47\" xr10:uidLastSave=\"{00000000-0000-0000-0000-000000000000}\" /><bookViews><workbookView xWindow=\"0\" yWindow=\"0\" windowWidth=\"0\" windowHeight=\"0\" xr2:uid=\"{00000000-000D-0000-FFFF-FFFF00000000}\" /><\/bookViews><sheets><sheet name=\"Base de Compras\" sheetId=\"1\" r:id=\"rId1\" /><sheet name=\"Por Categoría\" sheetId=\"2\" r:id=\"rId2\" /><sheet name=\"Por EESS\" sheetId=\"3\" r:id=\"rId3\" /><sheet name=\"EESS x Categoría\" sheetId=\"4\" r:id=\"rId4\" /><sheet name=\"Listas\" sheetId=\"5\" r:id=\"rId5\" /><\/sheets><definedNames><definedName name=\"Z_DE374A81_8A76_4131_A4D2_7B138ED3D36C_.wvu.FilterData\" localSheetId=\"0\" hidden=\"1\">'Base de Compras'!$A$1:$J${{U}}<\/definedName><\/definedNames><calcPr calcId=\"191028\" fullCalcOnLoad=\"1\" /><customWorkbookViews><customWorkbookView name=\"BaseCompras filter view\" guid=\"{DE374A81-8A76-4131-A4D2-7B138ED3D36C}\" maximized=\"1\" windowWidth=\"0\" windowHeight=\"0\" activeSheetId=\"0\" /><\/customWorkbookViews><extLst><ext uri=\"{B58B0392-4F1F-4190-BB64-5DF3571DCE5F}\" xmlns:xcalcf=\"http://schemas.microsoft.com/office/spreadsheetml/2018/calcfeatures\"><xcalcf:calcFeatures><xcalcf:feature name=\"microsoft.com:RD\" /><xcalcf:feature name=\"microsoft.com:Single\" /><xcalcf:feature name=\"microsoft.com:FV\" /><xcalcf:feature name=\"microsoft.com:CNMTM\" /><xcalcf:feature name=\"microsoft.com:LET_WF\" /><xcalcf:feature name=\"microsoft.com:LAMBDA_WF\" /><xcalcf:feature name=\"microsoft.com:ARRAYTEXT_WF\" /><\/xcalcf:calcFeatures><\/ext><\/extLst><\/workbook>","xl/_rels/workbook.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId13\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings\" Target=\"sharedStrings.xml\" /><Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet3.xml\" /><Relationship Id=\"rId12\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\" /><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet2.xml\" /><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\" /><Relationship Id=\"rId11\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\" Target=\"theme/theme1.xml\" /><Relationship Id=\"rId5\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet5.xml\" /><Relationship Id=\"rId4\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet4.xml\" /><\/Relationships>","docProps/app.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\"><Application>Excel Android<\/Application><ScaleCrop>false<\/ScaleCrop><HeadingPairs><vt:vector size=\"2\" baseType=\"variant\"><vt:variant><vt:lpstr>Hojas de cálculo<\/vt:lpstr><\/vt:variant><vt:variant><vt:i4>5<\/vt:i4><\/vt:variant><\/vt:vector><\/HeadingPairs><TitlesOfParts><vt:vector size=\"5\" baseType=\"lpstr\"><vt:lpstr>Base de Compras<\/vt:lpstr><vt:lpstr>Por Categoría<\/vt:lpstr><vt:lpstr>Por EESS<\/vt:lpstr><vt:lpstr>EESS x Categoría<\/vt:lpstr><vt:lpstr>Listas<\/vt:lpstr><\/vt:vector><\/TitlesOfParts><LinksUpToDate>false<\/LinksUpToDate><SharedDoc>false<\/SharedDoc><HyperlinksChanged>false<\/HyperlinksChanged><AppVersion>16.0300<\/AppVersion><\/Properties>","[Content_Types].xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\" /><Default Extension=\"xml\" ContentType=\"application/xml\" /><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\" /><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\" /><Override PartName=\"/xl/worksheets/sheet2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\" /><Override PartName=\"/xl/worksheets/sheet3.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\" /><Override PartName=\"/xl/worksheets/sheet4.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\" /><Override PartName=\"/xl/worksheets/sheet5.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\" /><Override PartName=\"/xl/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\" /><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\" /><Override PartName=\"/xl/sharedStrings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml\" /><Override PartName=\"/xl/tables/table1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml\" /><Override PartName=\"/xl/drawings/drawing1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawing+xml\" /><Override PartName=\"/xl/charts/chart1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\" /><Override PartName=\"/xl/drawings/drawing2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawing+xml\" /><Override PartName=\"/xl/charts/chart2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\" /><Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\" /><Override PartName=\"/docProps/app.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.extended-properties+xml\" /><\/Types>","_rels/.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties\" Target=\"docProps/app.xml\" /><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties\" Target=\"docProps/core.xml\" /><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\" /><\/Relationships>","docProps/core.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:creator>openpyxl<\/dc:creator><dcterms:created xsi:type=\"dcterms:W3CDTF\">2026-09-14T22:05:40Z<\/dcterms:created><\/cp:coreProperties>","xl/styles.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac x16r2 xr xr9\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:x16r2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/02/main\" xmlns:xr=\"http://schemas.microsoft.com/office/spreadsheetml/2014/revision\" xmlns:xr9=\"http://schemas.microsoft.com/office/spreadsheetml/2016/revision9\"><numFmts count=\"2\"><numFmt numFmtId=\"164\" formatCode=\"\\$\\ #,##0\" /><numFmt numFmtId=\"165\" formatCode=\"d\\-m\" /><\/numFmts><fonts count=\"8\" x14ac:knownFonts=\"1\"><font><sz val=\"11\" /><color theme=\"1\" /><name val=\"Calibri\" /><scheme val=\"minor\" /><\/font><font><b /><sz val=\"11\" /><color rgb=\"FFFFFFFF\" /><name val=\"Calibri\" /><scheme val=\"minor\" /><\/font><font><sz val=\"11\" /><color theme=\"1\" /><name val=\"Calibri\" /><scheme val=\"minor\" /><\/font><font><sz val=\"11\" /><color theme=\"1\" /><name val=\"Calibri\" /><\/font><font><b /><sz val=\"11\" /><color rgb=\"FFFFFFFF\" /><name val=\"Calibri\" /><\/font><font><b /><sz val=\"11\" /><color theme=\"1\" /><name val=\"Calibri\" /><scheme val=\"minor\" /><\/font><font><b /><sz val=\"14\" /><color rgb=\"FFFFFFFF\" /><name val=\"Calibri\" /><scheme val=\"minor\" /><\/font><font><b /><sz val=\"11\" /><color theme=\"1\" /><name val=\"Calibri\" /><\/font><\/fonts><fills count=\"8\"><fill><patternFill patternType=\"none\" /><\/fill><fill><patternFill patternType=\"gray125\" /><\/fill><fill><patternFill patternType=\"solid\"><fgColor theme=\"4\" /><bgColor theme=\"4\" /><\/patternFill><\/fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF1F4E78\" /><bgColor rgb=\"FF1F4E78\" /><\/patternFill><\/fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF1C4587\" /><bgColor rgb=\"FF1C4587\" /><\/patternFill><\/fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFD9EAF7\" /><bgColor rgb=\"FFD9EAF7\" /><\/patternFill><\/fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\" /><bgColor rgb=\"FFFFFFFF\" /><\/patternFill><\/fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC9DAF8\" /><bgColor rgb=\"FFC9DAF8\" /><\/patternFill><\/fill><\/fills><borders count=\"1\"><border><left /><right /><top /><bottom /><diagonal /><\/border><\/borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" /><\/cellStyleXfs><cellXfs count=\"28\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\" /><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\" /><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" /><xf numFmtId=\"164\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" /><xf numFmtId=\"0\" fontId=\"1\" fillId=\"3\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"4\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"164\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" /><\/xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"164\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" /><xf numFmtId=\"164\" fontId=\"5\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" /><xf numFmtId=\"165\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"5\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" /><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\" /><xf numFmtId=\"0\" fontId=\"2\" fillId=\"6\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\" /><xf numFmtId=\"0\" fontId=\"5\" fillId=\"7\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\" /><xf numFmtId=\"164\" fontId=\"5\" fillId=\"7\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" /><xf numFmtId=\"0\" fontId=\"7\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" /><xf numFmtId=\"164\" fontId=\"7\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" /><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\" /><\/xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"3\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" /><\/xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\" /><\/cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\" /><\/cellStyles><dxfs count=\"4\"><dxf><border><left style=\"thin\"><color theme=\"4\" /><\/left><right style=\"thin\"><color theme=\"4\" /><\/right><top style=\"thin\"><color theme=\"4\" /><\/top><bottom style=\"thin\"><color theme=\"4\" /><\/bottom><vertical style=\"thin\"><color rgb=\"FFD4D4D4\" /><\/vertical><horizontal style=\"thin\"><color rgb=\"FFD4D4D4\" /><\/horizontal><\/border><\/dxf><dxf><fill><patternFill patternType=\"solid\"><fgColor theme=\"0\" /><bgColor theme=\"0\" /><\/patternFill><\/fill><\/dxf><dxf><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFDBE5F1\" /><bgColor rgb=\"FFDBE5F1\" /><\/patternFill><\/fill><\/dxf><dxf><fill><patternFill patternType=\"solid\"><fgColor theme=\"4\" /><bgColor theme=\"4\" /><\/patternFill><\/fill><\/dxf><\/dxfs><tableStyles count=\"1\"><tableStyle name=\"Base de Compras-style\" pivot=\"0\" count=\"4\" xr9:uid=\"{00000000-0011-0000-FFFF-FFFF00000000}\"><tableStyleElement type=\"wholeTable\" size=\"0\" dxfId=\"0\" /><tableStyleElement type=\"headerRow\" dxfId=\"3\" /><tableStyleElement type=\"firstRowStripe\" dxfId=\"2\" /><tableStyleElement type=\"secondRowStripe\" dxfId=\"1\" /><\/tableStyle><\/tableStyles><extLst><ext uri=\"{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}\" xmlns:x14=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main\"><x14:slicerStyles defaultSlicerStyle=\"SlicerStyleLight1\" /><\/ext><ext uri=\"{9260A510-F301-46a8-8635-F512D64BE5F5}\" xmlns:x15=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/main\"><x15:timelineStyles defaultTimelineStyle=\"TimeSlicerStyleLight1\" /><\/ext><\/extLst><\/styleSheet>","xl/theme/theme1.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Sheets\"><a:themeElements><a:clrScheme name=\"Sheets\"><a:dk1><a:srgbClr val=\"000000\" /><\/a:dk1><a:lt1><a:srgbClr val=\"FFFFFF\" /><\/a:lt1><a:dk2><a:srgbClr val=\"000000\" /><\/a:dk2><a:lt2><a:srgbClr val=\"FFFFFF\" /><\/a:lt2><a:accent1><a:srgbClr val=\"4F81BD\" /><\/a:accent1><a:accent2><a:srgbClr val=\"C0504D\" /><\/a:accent2><a:accent3><a:srgbClr val=\"9BBB59\" /><\/a:accent3><a:accent4><a:srgbClr val=\"8064A2\" /><\/a:accent4><a:accent5><a:srgbClr val=\"4BACC6\" /><\/a:accent5><a:accent6><a:srgbClr val=\"F79646\" /><\/a:accent6><a:hlink><a:srgbClr val=\"0000FF\" /><\/a:hlink><a:folHlink><a:srgbClr val=\"0000FF\" /><\/a:folHlink><\/a:clrScheme><a:fontScheme name=\"Sheets\"><a:majorFont><a:latin typeface=\"Calibri\" /><a:ea typeface=\"Calibri\" /><a:cs typeface=\"Calibri\" /><\/a:majorFont><a:minorFont><a:latin typeface=\"Calibri\" /><a:ea typeface=\"Calibri\" /><a:cs typeface=\"Calibri\" /><\/a:minorFont><\/a:fontScheme><a:fmtScheme name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\" /><\/a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"110000\" /><a:satMod val=\"105000\" /><a:tint val=\"67000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\" /><a:satMod val=\"103000\" /><a:tint val=\"73000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\" /><a:satMod val=\"109000\" /><a:tint val=\"81000\" /><\/a:schemeClr><\/a:gs><\/a:gsLst><a:lin ang=\"5400000\" scaled=\"0\" /><\/a:gradFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:satMod val=\"103000\" /><a:lumMod val=\"102000\" /><a:tint val=\"94000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:satMod val=\"110000\" /><a:lumMod val=\"100000\" /><a:shade val=\"100000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"99000\" /><a:satMod val=\"120000\" /><a:shade val=\"78000\" /><\/a:schemeClr><\/a:gs><\/a:gsLst><a:lin ang=\"5400000\" scaled=\"0\" /><\/a:gradFill><\/a:fillStyleLst><a:lnStyleLst><a:ln w=\"6350\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\" /><\/a:solidFill><a:prstDash val=\"solid\" /><a:miter lim=\"800000\" /><\/a:ln><a:ln w=\"12700\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\" /><\/a:solidFill><a:prstDash val=\"solid\" /><a:miter lim=\"800000\" /><\/a:ln><a:ln w=\"19050\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\" /><\/a:solidFill><a:prstDash val=\"solid\" /><a:miter lim=\"800000\" /><\/a:ln><\/a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst /><\/a:effectStyle><a:effectStyle><a:effectLst /><\/a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"57150\" dist=\"19050\" dir=\"5400000\" algn=\"ctr\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"63000\" /><\/a:srgbClr><\/a:outerShdw><\/a:effectLst><\/a:effectStyle><\/a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val=\"phClr\" /><\/a:solidFill><a:solidFill><a:schemeClr val=\"phClr\"><a:tint val=\"95000\" /><a:satMod val=\"170000\" /><\/a:schemeClr><\/a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"93000\" /><a:satMod val=\"150000\" /><a:shade val=\"98000\" /><a:lumMod val=\"102000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:tint val=\"98000\" /><a:satMod val=\"130000\" /><a:shade val=\"90000\" /><a:lumMod val=\"103000\" /><\/a:schemeClr><\/a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"63000\" /><a:satMod val=\"120000\" /><\/a:schemeClr><\/a:gs><\/a:gsLst><a:lin ang=\"5400000\" scaled=\"0\" /><\/a:gradFill><\/a:bgFillStyleLst><\/a:fmtScheme><\/a:themeElements><a:objectDefaults /><a:extraClrSchemeLst /><\/a:theme>","xl/worksheets/_rels/sheet1.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/table\" Target=\"../tables/table1.xml\" /><\/Relationships>","xl/worksheets/_rels/sheet2.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing1.xml\" /><\/Relationships>","xl/worksheets/_rels/sheet3.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing2.xml\" /><\/Relationships>","xl/drawings/drawing1.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><xdr:oneCellAnchor><xdr:from><xdr:col>7<\/xdr:col><xdr:colOff>9525<\/xdr:colOff><xdr:row>0<\/xdr:row><xdr:rowOff>28575<\/xdr:rowOff><\/xdr:from><xdr:ext cx=\"5715000\" cy=\"3533775\" /><xdr:graphicFrame macro=\"\"><xdr:nvGraphicFramePr><xdr:cNvPr id=\"1937930461\" name=\"Chart 1\" title=\"Gráfico\"><a:extLst><a:ext uri=\"{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}\"><a16:creationId xmlns:a16=\"http://schemas.microsoft.com/office/drawing/2014/main\" id=\"{00000000-0008-0000-0100-0000DD788273}\" /><\/a:ext><\/a:extLst><\/xdr:cNvPr><xdr:cNvGraphicFramePr /><\/xdr:nvGraphicFramePr><xdr:xfrm><a:off x=\"0\" y=\"0\" /><a:ext cx=\"0\" cy=\"0\" /><\/xdr:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:id=\"rId1\" /><\/a:graphicData><\/a:graphic><\/xdr:graphicFrame><xdr:clientData fLocksWithSheet=\"0\" /><\/xdr:oneCellAnchor><\/xdr:wsDr>","xl/drawings/drawing2.xml":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><xdr:oneCellAnchor><xdr:from><xdr:col>5<\/xdr:col><xdr:colOff>571500<\/xdr:colOff><xdr:row>1<\/xdr:row><xdr:rowOff>38100<\/xdr:rowOff><\/xdr:from><xdr:ext cx=\"5715000\" cy=\"3533775\" /><xdr:graphicFrame macro=\"\"><xdr:nvGraphicFramePr><xdr:cNvPr id=\"1931304300\" name=\"Chart 2\" title=\"Gráfico\"><a:extLst><a:ext uri=\"{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}\"><a16:creationId xmlns:a16=\"http://schemas.microsoft.com/office/drawing/2014/main\" id=\"{00000000-0008-0000-0200-00006C5D1D73}\" /><\/a:ext><\/a:extLst><\/xdr:cNvPr><xdr:cNvGraphicFramePr /><\/xdr:nvGraphicFramePr><xdr:xfrm><a:off x=\"0\" y=\"0\" /><a:ext cx=\"0\" cy=\"0\" /><\/xdr:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:id=\"rId1\" /><\/a:graphicData><\/a:graphic><\/xdr:graphicFrame><xdr:clientData fLocksWithSheet=\"0\" /><\/xdr:oneCellAnchor><\/xdr:wsDr>","xl/drawings/_rels/drawing1.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"../charts/chart1.xml\" /><\/Relationships>","xl/drawings/_rels/drawing2.xml.rels":"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"../charts/chart2.xml\" /><\/Relationships>"}}</script>
 
 </body>
 </html>
