@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.7';
+  var VERSION_APP = '2.4.8';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -1041,6 +1041,9 @@
   const URL_MENSAJERIA = 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js';
   const SUFIJO_LOCAL = ES_PRUEBA ? '_prueba' : '';
   let avisosRegistrados = false;
+  // Con el permiso ya dado, el registro al entrar es automático: mientras se hace no se muestra
+  // la franja (antes aparecía un instante). Solo vuelve si ese registro automático falla.
+  let registroAutomatico = '';   // '' | 'en curso' | 'fallo'
   let cargaMensajeria = null;
 
   function leerLocal(clave) { try { return localStorage.getItem(clave + SUFIJO_LOCAL); } catch (e) { return null; } }
@@ -1121,7 +1124,7 @@
     if (Notification.permission === 'denied') {
       return { texto: 'Los avisos están bloqueados en este celular. Para recibirlos, permití las notificaciones de esta app en la configuración del celular.', boton: false };
     }
-    if (Notification.permission === 'granted' && avisosRegistrados) return null;
+    if (Notification.permission === 'granted' && (avisosRegistrados || registroAutomatico !== 'fallo')) return null;
     return { texto: 'Activá los avisos para enterarte de las novedades aunque la app esté cerrada.', boton: true };
   }
 
@@ -1153,6 +1156,7 @@
         return;
       }
       await registrarDispositivo();
+      registroAutomatico = '';
       mostrarToast('Avisos activados en este celular.');
     } catch (err) {
       mostrarToast('No se pudieron activar los avisos: ' + (err && err.message ? err.message : err), true);
@@ -1165,11 +1169,15 @@
   // Al entrar: si este celular ya tiene el permiso, se registra solo (con el usuario actual)
   // y se mandan los avisos que hayan quedado pendientes.
   function prepararAvisos() {
+    registroAutomatico = '';
+    if (avisosDisponibles() && Notification.permission === 'granted' && usuarioActual) {
+      registroAutomatico = 'en curso';
+      registrarDispositivo().then(function() { registroAutomatico = ''; }, function() {
+        registroAutomatico = 'fallo';   // queda la franja con el botón para reintentar
+      }).then(actualizarBandaAvisos);
+    }
     actualizarBandaAvisos();
     if (!avisosDisponibles()) return;
-    if (Notification.permission === 'granted' && usuarioActual) {
-      registrarDispositivo().catch(function() { /* se reintenta al volver a entrar */ }).then(actualizarBandaAvisos);
-    }
     enviarAvisosPendientes();
   }
 
