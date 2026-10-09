@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.6';
+  var VERSION_APP = '2.4.7';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -640,6 +640,23 @@
     background:#141414; color: var(--text); font-size:14px; font-family:inherit; resize:vertical;
   }
 
+  /* Franja de avisos (notificaciones push): arriba del contenido, en todas las pestañas,
+     mientras el celular no tenga los avisos activados. */
+  .banda-avisos {
+    display:none; align-items:center; gap:10px; margin:0 0 14px; padding:10px 12px;
+    border:1px solid var(--gold-dark); border-radius:10px; background:#1d1a12;
+    color: var(--gold-light); font-size:13px; line-height:1.35;
+  }
+  .banda-avisos.visible { display:flex; }
+  .banda-avisos span { flex:1; }
+  .banda-avisos .btn-avisos {
+    flex:none; background: var(--gold-metal); color:#121212; border:none; border-radius:8px;
+    padding:9px 12px; font-size:13px; font-weight:700; font-family:inherit;
+  }
+  .banda-avisos .btn-avisos:disabled { opacity:0.6; }
+  .banda-avisos .banda-cerrar {
+    flex:none; background:none; border:none; color: var(--text-dim); font-size:20px; line-height:1; padding:2px 4px;
+  }
   .toast {
     position:fixed; left:16px; right:16px; top:74px; z-index:1200;
     background:#2a2416; border:1px solid var(--gold); color: var(--gold-light);
@@ -765,6 +782,12 @@
       </button>
     </header>
     <main>
+      <!-- Avisos con la app cerrada: invita a activarlos en este celular. -->
+      <div id="bandaAvisos" class="banda-avisos" role="status">
+        <span id="bandaAvisosTexto"></span>
+        <button type="button" class="btn-avisos" id="btnActivarAvisos" onclick="activarAvisos(this)">Activar avisos</button>
+        <button type="button" class="banda-cerrar" id="btnCerrarBandaAvisos" onclick="cerrarBandaAvisos()" aria-label="Cerrar">&times;</button>
+      </div>
       <!-- ===== INICIO (Encargado) ===== -->
       <div id="tab-inicio" class="tab-content active">
         <div class="selector-modo">
@@ -1005,6 +1028,203 @@
 
   const LIMITE_URGENCIA = 200000;
 
+  // ---------- Avisos con la app cerrada (notificaciones push) ----------
+  // Cada celular que activa los avisos queda registrado en "dispositivos" con su rol.
+  // Después de cada cambio (orden nueva, aprobada, recibida...) la app le avisa al servicio
+  // oc-avisos (Cloudflare), que decide a quién notificar según el estado real de la orden.
+  // Los encargados comparten usuario: cada orden guarda desde qué celular se creó y los avisos
+  // de esa orden le llegan solo a ese celular.
+  const URL_AVISOS = 'https://oc-avisos.ignabeni1.workers.dev';
+  // Clave pública de avisos de cada proyecto. La del proyecto real se completa al pasar a producción;
+  // mientras esté vacía, en producción los avisos quedan apagados y nada cambia.
+  const CLAVE_AVISOS = ES_PRUEBA ? 'BPwDDRiVrMiqPZzpMfgx9Axq_5v-2m395SpOHPQwlrbbOwElmTY3MuD8kXs5v1f7pE9iu4UMqS_HCTBvGbaii54' : '';
+  const URL_MENSAJERIA = 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js';
+  const SUFIJO_LOCAL = ES_PRUEBA ? '_prueba' : '';
+  let avisosRegistrados = false;
+  let cargaMensajeria = null;
+
+  function leerLocal(clave) { try { return localStorage.getItem(clave + SUFIJO_LOCAL); } catch (e) { return null; } }
+  function guardarLocalStorage(clave, valor) { try { localStorage.setItem(clave + SUFIJO_LOCAL, valor); } catch (e) { /* sin almacenamiento */ } }
+
+  // Identificador propio de este celular (no cambia aunque cambie el usuario).
+  let idDispositivoMemoria = null;
+  function idDispositivo() {
+    if (idDispositivoMemoria) return idDispositivoMemoria;
+    let id = leerLocal('oc_dispositivo');
+    if (!id || !/^[\w-]{8,64}$/.test(id)) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+        'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+      guardarLocalStorage('oc_dispositivo', id);
+    }
+    idDispositivoMemoria = id;
+    return id;
+  }
+
+  function avisosDisponibles() {
+    return !!CLAVE_AVISOS && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+
+  function cargarMensajeria() {
+    if (firebase.messaging) return Promise.resolve();
+    if (cargaMensajeria) return cargaMensajeria;
+    cargaMensajeria = new Promise(function(resolve, reject) {
+      const sc = document.createElement('script');
+      sc.src = URL_MENSAJERIA;
+      sc.onload = function() { firebase.messaging ? resolve() : reject(new Error('no cargó')); };
+      sc.onerror = function() { cargaMensajeria = null; sc.remove(); reject(new Error('revisá la conexión a internet')); };
+      document.head.appendChild(sc);
+    });
+    return cargaMensajeria;
+  }
+
+  function esperarActivo(reg) {
+    if (reg.active) return Promise.resolve(reg);
+    return conLimite(new Promise(function(resolve) {
+      const sw = reg.installing || reg.waiting;
+      if (!sw) { resolve(reg); return; }
+      sw.addEventListener('statechange', function() { if (sw.state === 'activated') resolve(reg); });
+    }), 15000);
+  }
+
+  // Registra este celular para recibir avisos del usuario que está adentro.
+  async function registrarDispositivo() {
+    const reg = await navigator.serviceWorker.register('sw-avisos.js', { scope: './' });
+    await esperarActivo(reg);
+    await cargarMensajeria();
+    const token = await firebase.messaging().getToken({ vapidKey: CLAVE_AVISOS, serviceWorkerRegistration: reg });
+    if (!token) throw new Error('el celular no entregó el permiso');
+    if (!usuarioActual) return;
+    await db.collection('dispositivos').doc(idDispositivo()).set({
+      token: token,
+      rol: usuarioActual.rol,
+      email: usuarioActual.email,
+      plataforma: ES_IOS ? 'iphone' : 'android',
+      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    avisosRegistrados = true;
+  }
+
+  // Al salir, este celular deja de recibir avisos de ese usuario.
+  function quitarDispositivo() {
+    if (!avisosRegistrados) return Promise.resolve();
+    avisosRegistrados = false;
+    return db.collection('dispositivos').doc(idDispositivo()).delete().catch(function() { /* ya no estaba */ });
+  }
+
+  function textoBandaAvisos() {
+    if (!CLAVE_AVISOS) return null;
+    if (!avisosDisponibles()) {
+      // iPhone abierto desde Safari sin instalar: los avisos solo funcionan con la app instalada.
+      if (ES_IOS && !IOS_INSTALADA) return { texto: 'Para recibir avisos en el iPhone, instalá la app: en Safari tocá Compartir → Agregar a inicio, y abrila desde el ícono.', boton: false };
+      return null;
+    }
+    if (Notification.permission === 'denied') {
+      return { texto: 'Los avisos están bloqueados en este celular. Para recibirlos, permití las notificaciones de esta app en la configuración del celular.', boton: false };
+    }
+    if (Notification.permission === 'granted' && avisosRegistrados) return null;
+    return { texto: 'Activá los avisos para enterarte de las novedades aunque la app esté cerrada.', boton: true };
+  }
+
+  function actualizarBandaAvisos() {
+    const banda = document.getElementById('bandaAvisos');
+    const info = usuarioActual ? textoBandaAvisos() : null;
+    const cerrada = info && !info.boton && leerLocal('oc_banda_avisos_cerrada') === info.texto;
+    if (!info || cerrada) { banda.classList.remove('visible'); return; }
+    document.getElementById('bandaAvisosTexto').textContent = info.texto;
+    document.getElementById('btnActivarAvisos').style.display = info.boton ? '' : 'none';
+    // La invitación a activar no se puede cerrar: es la forma de recibir los avisos.
+    document.getElementById('btnCerrarBandaAvisos').style.display = info.boton ? 'none' : '';
+    banda.classList.add('visible');
+  }
+
+  function cerrarBandaAvisos() {
+    guardarLocalStorage('oc_banda_avisos_cerrada', document.getElementById('bandaAvisosTexto').textContent);
+    actualizarBandaAvisos();
+  }
+
+  async function activarAvisos(boton) {
+    if (!avisosDisponibles() || !usuarioActual) return;
+    boton.disabled = true;
+    try {
+      // En iPhone el pedido de permiso tiene que salir directo del toque: va primero.
+      const permiso = await Notification.requestPermission();
+      if (permiso !== 'granted') {
+        mostrarToast(permiso === 'denied' ? 'No se activaron los avisos: el permiso quedó bloqueado.' : 'No se activaron los avisos.', true);
+        return;
+      }
+      await registrarDispositivo();
+      mostrarToast('Avisos activados en este celular.');
+    } catch (err) {
+      mostrarToast('No se pudieron activar los avisos: ' + (err && err.message ? err.message : err), true);
+    } finally {
+      boton.disabled = false;
+      actualizarBandaAvisos();
+    }
+  }
+
+  // Al entrar: si este celular ya tiene el permiso, se registra solo (con el usuario actual)
+  // y se mandan los avisos que hayan quedado pendientes.
+  function prepararAvisos() {
+    actualizarBandaAvisos();
+    if (!avisosDisponibles()) return;
+    if (Notification.permission === 'granted' && usuarioActual) {
+      registrarDispositivo().catch(function() { /* se reintenta al volver a entrar */ }).then(actualizarBandaAvisos);
+    }
+    enviarAvisosPendientes();
+  }
+
+  // Aviso de un cambio. Se guarda en una cola del celular y se manda; si no hay conexión,
+  // queda pendiente y sale al volver la conexión o al abrir la app.
+  function avisarCambio(coleccion, id, evento) {
+    if (!CLAVE_AVISOS || !usuarioActual) return;
+    const cola = leerColaAvisos();
+    cola.push({ coleccion: coleccion, id: id, evento: evento || '', email: usuarioActual.email, cuando: Date.now() });
+    guardarLocalStorage('oc_avisos_pendientes', JSON.stringify(cola.slice(-50)));
+    enviarAvisosPendientes();
+  }
+
+  function leerColaAvisos() {
+    try {
+      const c = JSON.parse(leerLocal('oc_avisos_pendientes') || '[]');
+      return Array.isArray(c) ? c : [];
+    } catch (e) { return []; }
+  }
+
+  let enviandoAvisos = false;
+  async function enviarAvisosPendientes() {
+    if (enviandoAvisos || !CLAVE_AVISOS) return;
+    const user = auth.currentUser;
+    if (!user || !usuarioActual) return;
+    enviandoAvisos = true;
+    try {
+      let cola = leerColaAvisos();
+      const limite = Date.now() - 2 * 24 * 3600 * 1000;   // lo de más de dos días ya no se avisa
+      for (const a of cola.slice()) {
+        let listo = a.cuando < limite || a.email !== usuarioActual.email;
+        if (!listo) {
+          try {
+            const token = await user.getIdToken();
+            const r = await fetch(URL_AVISOS, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify({ coleccion: a.coleccion, id: a.id, evento: a.evento, dispositivo: idDispositivo() })
+            });
+            listo = r.status < 500;   // un error del servicio se reintenta; un pedido rechazado, no
+          } catch (e) {
+            break;                    // sin conexión: queda todo para después
+          }
+        }
+        if (listo) {
+          cola = leerColaAvisos().filter(function(x) { return !(x.coleccion === a.coleccion && x.id === a.id && x.evento === a.evento && x.cuando === a.cuando); });
+          guardarLocalStorage('oc_avisos_pendientes', JSON.stringify(cola));
+        }
+      }
+    } finally {
+      enviandoAvisos = false;
+    }
+  }
+  window.addEventListener('online', function() { enviarAvisosPendientes(); });
+
   let usuarioActual = null;
   let listas = { estaciones: [], encargados: [] };
   let modoActual = 'normal';
@@ -1154,6 +1374,7 @@
     renderGeneradas();
     renderHistorial();
     iniciarSeguimientoHistorial();
+    prepararAvisos();
   }
 
   const SVG_OJO_ABIERTO = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
@@ -1173,8 +1394,13 @@
   function cerrarSesion() {
     if (!confirm('¿Querés cerrar sesión?')) return;
 
-    auth.signOut().catch(function() {});
+    // Antes de salir, este celular se da de baja de los avisos de ese usuario.
+    const saliente = auth.currentUser;
+    conLimite(quitarDispositivo(), 4000).catch(function() {}).then(function() {
+      if (auth.currentUser === saliente) auth.signOut().catch(function() {});
+    });
     usuarioActual = null;
+    document.getElementById('bandaAvisos').classList.remove('visible');
 
     document.getElementById('formSolicitud').reset();
     limpiarProductosForm();
@@ -1959,8 +2185,10 @@
         estado: 'informada',
         creada: urgencia.creada,
         enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
-        creadoPor: urgencia.creadoPor
+        creadoPor: urgencia.creadoPor,
+        dispositivo: idDispositivo()
       });
+      avisarCambio('urgencias', urgencia.id, 'nueva');
     } catch (err) {
       msg.textContent = mensajeErrorEnvio(err);
       msg.className = 'msg error';
@@ -2304,6 +2532,7 @@
       }
     }
     await marcarRecibidaLocal(id, fecha, nombre);
+    avisarCambio(esUrgencia ? 'urgencias' : 'solicitudes', id, esUrgencia ? 'recepcion' : '');
     if (!esUrgencia) {
       // Se guarda la orden tal como quedó en Firebase: con eso el encargado descarga el mismo
       // PDF final que Compras y Gerencia. Si justo falla, se vuelve a pedir al descargar.
@@ -2965,8 +3194,10 @@
         estado: 'pendiente_compras',
         creada: solicitud.creada,
         enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
-        creadoPor: solicitud.creadoPor
+        creadoPor: solicitud.creadoPor,
+        dispositivo: idDispositivo()
       });
+      avisarCambio('solicitudes', solicitud.id);
     } catch (err) {
       solicitud.firma = null;
       botones.forEach(b => { b.disabled = false; });
@@ -3148,6 +3379,7 @@
     prepararPanel('compras');
     escucharSolicitudes();
     escucharUrgencias();
+    prepararAvisos();
   }
 
   function entrarComoGerencia() {
@@ -3155,6 +3387,7 @@
     escucharSolicitudes();
     // Gerencia también ve las compras de urgencia, solo para consultarlas.
     escucharUrgencias();
+    prepararAvisos();
   }
 
   function detenerEscuchas() {
@@ -3469,6 +3702,8 @@
     if (boton) boton.disabled = true;
     try {
       await db.collection('solicitudes').doc(id).update(cambios);
+      // Solo los cambios de estado generan aviso (cargar o quitar presupuestos, no).
+      if (cambios.estado) avisarCambio('solicitudes', id);
       return true;
     } catch (err) {
       mostrarToast(mensajeErrorEnvio(err), true);
@@ -3595,6 +3830,7 @@
         estado: 'registrada',
         registradaEn: firebase.firestore.FieldValue.serverTimestamp()
       });
+      avisarCambio('urgencias', id, 'registrada');
       mostrarToast('Compra de urgencia registrada.');
     } catch (err) {
       boton.disabled = false;
