@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.5.0';
+  var VERSION_APP = '2.5.1';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -2183,13 +2183,24 @@
       creadoPor: usuarioActual ? usuarioActual.email : ''
     };
 
-    const ok = await pedirConfirmacion('Confirmá la compra',
+    // El encargado firma para informar la compra (como al enviar una orden). Sin firma no se envía.
+    const firma = await pedirFirma('Firmá para informar la compra',
       urgencia.eess + ' · ' + urgencia.encargado + '\n' +
       urgencia.detalle + '\n' +
       'Importe: ' + formatoPesos(urgencia.importe) + '\n' +
       'Proveedor: ' + urgencia.proveedor,
-      'Informar');
-    if (!ok) return;
+      'Confirmar y enviar');
+    if (!firma) return;
+    urgencia.firma = firma;
+
+    // El PDF se genera primero, en el mismo toque del usuario, para que la descarga no se bloquee.
+    try {
+      generarPDFUrgencia(urgencia);
+    } catch (err) {
+      msg.textContent = 'No se pudo generar el PDF: ' + err.message;
+      msg.className = 'msg error';
+      return;
+    }
 
     btn.disabled = true;
     msg.textContent = 'Enviando a Compras... no cierres la app.';
@@ -2206,6 +2217,7 @@
         importe: urgencia.importe,
         proveedor: urgencia.proveedor,
         comprobante: urgencia.comprobante,
+        firma: urgencia.firma,
         estado: 'informada',
         creada: urgencia.creada,
         enviadaEn: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2214,7 +2226,8 @@
       });
       avisarCambio('urgencias', urgencia.id, 'nueva');
     } catch (err) {
-      msg.textContent = mensajeErrorEnvio(err);
+      msg.textContent = (ES_IOS ? 'El PDF se generó' : 'El PDF se descargó') + ', pero la compra no llegó a Compras. ' +
+        mensajeErrorEnvio(err) + ' Los datos siguen cargados: tocá de nuevo "Informar compra a Compras".';
       msg.className = 'msg error';
       btn.disabled = false;
       return;
@@ -2232,7 +2245,8 @@
     btn.disabled = false;
     await renderHistorial();
     iniciarSeguimientoHistorial();
-    await mostrarAviso('Compra informada', 'Compras ya recibió la compra de urgencia. Queda registrada en tu Historial.');
+    await mostrarAviso('Compra informada', 'Compras ya recibió la compra de urgencia. Queda registrada en tu Historial.' +
+      (ES_IOS ? ' Si no guardaste el PDF, podés compartirlo o guardarlo desde Historial.' : ' El PDF quedó descargado en tu celular.'));
   }
 
   // ---------- Listados ----------
@@ -2310,7 +2324,8 @@
           '<div class="card-estado">' + chipEstadoEncargado(estado) + '</div>' +
           // También en las compras de urgencia el encargado confirma que recibió lo comprado.
           (faltaRecibir ? '<div class="card-aviso-recibir">Falta que confirmes que la recibiste.</div>' +
-            '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '');
+            '<button class="btn-generar-pdf btn-recibir" onclick="confirmarRecepcion(\'' + s.id + '\')">Confirmar recepción</button>' : '') +
+          '<button class="btn-generar-pdf' + (faltaRecibir ? ' btn-card-secundario' : '') + '" onclick="descargarPDFUrgenciaEncargado(\'' + s.id + '\', this)">Descargar PDF</button>';
       } else {
         card.innerHTML =
           '<div class="card-top">' +
@@ -2808,6 +2823,126 @@
     // En iPhone el PDF no se descarga solo: se abre la hoja de Compartir del teléfono.
     if (ES_IOS && entregarPDFenIOS(doc, nombrePDF)) return;
     doc.save(nombrePDF);
+  }
+
+  // ---------- PDF de la compra de urgencia ----------
+  // Mismo estilo que el de la orden: datos del encargado en negro, lo de Compras en gris oscuro,
+  // líneas finas entre partes y la firma del encargado en azul. Las urgencias cargadas antes
+  // de la v2.5.1 no tienen firma: su PDF sale sin ella.
+  function generarPDFUrgencia(u) {
+    const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFCtor) {
+      throw new Error('No se pudo cargar la librería de PDF (revisá tu conexión a internet)');
+    }
+    const doc = new jsPDFCtor();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.text('COMPRA DE URGENCIA', 105, y, { align: 'center' });
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text('N.° ' + u.id, 105, y, { align: 'center' });
+    y += 14;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+
+    function color(c) { doc.setTextColor(c[0], c[1], c[2]); }
+    function separador() {
+      y += 1;
+      if (y > 268) { doc.addPage(); y = 20; return; }
+      doc.setDrawColor(190, 190, 190);
+      doc.setLineWidth(0.1);
+      doc.line(15, y, 195, y);
+      y += 7;
+    }
+    function linea(etiqueta, valor, c) {
+      if (y > 280) { doc.addPage(); y = 20; }
+      color(c || PDF_ENCARGADO);
+      doc.setFont(undefined, 'bold');
+      const textoEtiqueta = etiqueta + ':';
+      doc.text(textoEtiqueta, 15, y);
+      const anchoEtiqueta = doc.getTextWidth(textoEtiqueta);
+      doc.setFont(undefined, 'normal');
+      const xValor = 15 + anchoEtiqueta + 4;
+      const texto = doc.splitTextToSize(String(valor || '-'), 195 - xValor);
+      doc.text(texto, xValor, y);
+      y += 7 * texto.length;
+      color(PDF_ENCARGADO);
+    }
+
+    linea('EESS / Destino', u.eess);
+    linea('Encargado', u.encargado);
+    linea('Fecha de la compra', fechaCorta(u.fechaCompra));
+    linea('Detalle de lo comprado', u.detalle);
+    linea('Motivo de la urgencia', u.motivo);
+    linea('Importe total', formatoPesos(u.importe));
+    linea('Proveedor', u.proveedor);
+    linea('N.° de comprobante / factura', u.comprobante);
+
+    if (u.estado === 'registrada') {
+      separador();
+      linea('Registrada por Compras', u.registradaEn ? 'Sí, el ' + fechaDeTimestamp(u.registradaEn) : 'Sí', PDF_COMPRAS);
+    }
+    const fechaRecepcion = u.recibidaEn ? fechaDeTimestamp(u.recibidaEn) : (u.recibidaLocal ? fechaCorta(u.recibidaLocal) : '');
+    if (u.recibidaEn || u.recibidaLocal) {
+      separador();
+      linea('Compra recibida', fechaRecepcion ? 'Sí, el ' + fechaRecepcion : 'Sí');
+      linea('Recibida por', u.recibidaPorNombre || u.encargado || '-');
+    }
+
+    y += 6;
+    if (u.firma) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      y += 4;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+      doc.text('Firma del Encargado:', 15, y);
+      try {
+        doc.addImage(firmaParaPDF(u.firma), 'PNG', 15, y + 4, 70, 30, undefined, 'FAST');
+      } catch (e) {
+        // si la firma falla, seguimos sin bloquear el resto del PDF
+      }
+      doc.setDrawColor(150, 150, 150);
+      doc.line(15, y + 34, 85, y + 34);
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(u.encargado || '', 15, y + 39);
+    }
+
+    const nombrePDF = 'compra-de-urgencia-' + u.id + '.pdf';
+    if (ES_IOS && entregarPDFenIOS(doc, nombrePDF)) return;
+    doc.save(nombrePDF);
+  }
+
+  // Encargado: arma el PDF con lo guardado en el celular y, si hay conexión, con lo último de
+  // Firebase (si Compras ya la registró y cuándo). Sin conexión sale con lo que hay en el celular.
+  async function descargarPDFUrgenciaEncargado(id, boton) {
+    const local = cacheSolicitudes.get(id);
+    if (!local) return;
+    let datos = Object.assign({}, local, { estado: estadoActualLocal(local) });
+    if (boton) boton.disabled = true;
+    try {
+      const snap = await conLimite(db.collection('urgencias').doc(id).get(), 4000);
+      if (snap.exists) datos = Object.assign(datos, copiaRemota(snap.data() || {}));
+    } catch (e) { /* sin conexión: se usa lo guardado en el celular */ }
+    if (boton) boton.disabled = false;
+    try {
+      generarPDFUrgencia(datos);
+    } catch (err) {
+      alert('No se pudo generar el PDF: ' + err.message);
+    }
+  }
+
+  function descargarPDFUrgenciaPanel(id) {
+    const u = datosUrgencias.find(x => x.id === id);
+    if (!u) return;
+    try {
+      generarPDFUrgencia(u);
+    } catch (err) {
+      mostrarToast('No se pudo generar el PDF: ' + err.message, true);
+    }
   }
 
   // ---------- PDF en iPhone / iPad ----------
@@ -3614,6 +3749,7 @@
       (u.estado === 'informada' && soloLectura !== true
         ? '<button class="btn-generar-pdf" onclick="registrarUrgencia(\'' + u.id + '\', this)">Marcar como registrada</button>'
         : '') +
+      '<button class="btn-generar-pdf btn-card-secundario" onclick="descargarPDFUrgenciaPanel(\'' + u.id + '\')">Descargar PDF</button>' +
     '</div>';
   }
 
