@@ -21,7 +21,7 @@
   // saber de un vistazo qué versión cargó el celular. SUBIR ESTE NÚMERO EN CADA ENTREGA:
   // el último número sube de a uno (2.4.1, 2.4.2, ... 2.4.9) y después del 9 pasa al
   // siguiente del medio (2.5.0). El número nunca vuelve para atrás.
-  var VERSION_APP = '2.4.8';
+  var VERSION_APP = '2.5.0';
 
   // ===== Entorno: real o de prueba =====
   // Este mismo archivo sirve dos direcciones y decide solo cuál es, según desde dónde se abre:
@@ -1466,11 +1466,27 @@
     document.getElementById('nav-' + id).classList.add('active');
     document.getElementById('tabTitle').textContent = TITULOS[id];
     window.scrollTo(0, 0);
+    // El aviso de "Solicitud generada" (o de urgencia informada) es de ese momento: al cambiar
+    // de pestaña se borra, para que no aparezca de nuevo al cargar la orden siguiente.
+    if (id !== tabActual) limpiarMensajesFormulario();
     tabActual = id;
     if (id === 'historial') {
       marcarHistorialVisto().then(function() { renderHistorial(); });
     }
   }
+
+  function limpiarMensajesFormulario(soloExito) {
+    ['f_msg', 'u_msg'].forEach(function(id) {
+      const m = document.getElementById(id);
+      if (!m || (soloExito && !m.classList.contains('ok'))) return;
+      m.textContent = '';
+      m.className = 'msg';
+    });
+  }
+  // Si después de generar una orden se empieza a cargar otra, el aviso verde de la anterior se va.
+  document.addEventListener('input', function(e) {
+    if (e.target && e.target.closest && e.target.closest('#formSolicitud, #formUrgencia')) limpiarMensajesFormulario(true);
+  });
 
   function seleccionarModo(modo) {
     modoActual = modo;
@@ -2230,6 +2246,7 @@
     }
     lista = lista.filter(s => s.tipo === 'normal' && s.estadoLocal === 'pendiente_firma' && esDelUsuarioActual(s))
       .sort(porFechaCreacion).reverse();
+    prepararFirmasDe(lista);
     const cont = document.getElementById('listaGeneradas');
     const vacio = document.getElementById('generadasVacio');
     cont.innerHTML = '';
@@ -2261,6 +2278,7 @@
       return;
     }
     lista = lista.filter(s => s.estadoLocal === 'enviada' && esDelUsuarioActual(s)).sort(porFechaCreacion).reverse();
+    prepararFirmasDe(lista);
     const cont = document.getElementById('listaHistorial');
     const vacio = document.getElementById('historialVacio');
     cont.innerHTML = '';
@@ -2555,6 +2573,61 @@
   }
 
   // ---------- PDF ----------
+  // Colores del PDF:
+  //   Encargado: negro (como siempre) · Compras (presupuestos y compra realizada): gris oscuro
+  //   Resolución: verde si se aprueba (y la marca [APROBADO]), rojo si se rechaza · Firmas: azul tinta.
+  const COLOR_FIRMA = '#1B3A8C';
+  const PDF_ENCARGADO = [0, 0, 0];
+  const PDF_COMPRAS = [75, 75, 75];
+  const PDF_APROBADO = [0, 125, 60];
+  const PDF_RECHAZADO = [190, 30, 30];
+
+  // Las firmas anteriores a este cambio se guardaron en negro. Para el PDF se pasan a azul
+  // (los trazos grises/negros se vuelven azules; el fondo blanco queda igual). Se preparan de
+  // antemano, apenas llegan los datos, porque el PDF se arma en el mismo toque del usuario.
+  const firmasAzules = new Map();
+  function prepararFirmaAzul(url) {
+    if (!url || typeof url !== 'string' || firmasAzules.has(url) || url.indexOf('data:image') !== 0) return;
+    firmasAzules.set(url, null);
+    const img = new Image();
+    img.onload = function() {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height);
+        const px = d.data;
+        const azul = [0x1B, 0x3A, 0x8C];
+        let cambio = false;
+        for (let i = 0; i < px.length; i += 4) {
+          const r = px[i], g = px[i + 1], b = px[i + 2];
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          if (mx - mn > 40 || mn > 245) continue;     // ya tiene color (azul) o es fondo blanco
+          const t = (255 - mn) / 255;                 // cuánto "trazo" hay en ese punto
+          px[i] = Math.round(255 - t * (255 - azul[0]));
+          px[i + 1] = Math.round(255 - t * (255 - azul[1]));
+          px[i + 2] = Math.round(255 - t * (255 - azul[2]));
+          cambio = true;
+        }
+        if (!cambio) { firmasAzules.set(url, url); return; }
+        ctx.putImageData(d, 0, 0);
+        firmasAzules.set(url, c.toDataURL('image/png'));
+      } catch (e) { firmasAzules.delete(url); }
+    };
+    img.onerror = function() { firmasAzules.delete(url); };
+    img.src = url;
+  }
+  function prepararFirmasDe(lista) {
+    (lista || []).forEach(function(s) {
+      if (!s) return;
+      prepararFirmaAzul(s.firma);
+      prepararFirmaAzul(s.firmaGerencia);
+      if (s.remoto) { prepararFirmaAzul(s.remoto.firma); prepararFirmaAzul(s.remoto.firmaGerencia); }
+    });
+  }
+  function firmaParaPDF(url) { return firmasAzules.get(url) || url; }
+
   function generarPDFOrden(solicitud) {
     const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
     if (!jsPDFCtor) {
@@ -2575,7 +2648,19 @@
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
 
-    function linea(etiqueta, valor) {
+    function color(c) { doc.setTextColor(c[0], c[1], c[2]); }
+    // Línea divisoria entre secciones (formulario, presupuestos, resolución, compra, recepción).
+    function separador() {
+      y += 1;
+      if (y > 268) { doc.addPage(); y = 20; return; }
+      doc.setDrawColor(190, 190, 190);
+      doc.setLineWidth(0.1);
+      doc.line(15, y, 195, y);
+      y += 7;
+    }
+
+    function linea(etiqueta, valor, c) {
+      color(c || PDF_ENCARGADO);
       doc.setFont(undefined, 'bold');
       const textoEtiqueta = etiqueta + ':';
       doc.text(textoEtiqueta, 15, y);
@@ -2586,6 +2671,7 @@
       const texto = doc.splitTextToSize(String(valor || '-'), anchoDisponible);
       doc.text(texto, xValor, y);
       y += 7 * texto.length;
+      color(PDF_ENCARGADO);
     }
 
     linea('EESS / Destino', solicitud.eess);
@@ -2629,10 +2715,12 @@
       });
     }
 
+    // Presupuestos: los carga Compras (gris oscuro). La marca del aprobado va en verde y en negrita.
     const presus = solicitud.presupuestos || [];
     if (presus.length) {
-      y += 4;
+      separador();
       if (y > 250) { doc.addPage(); y = 20; }
+      color(PDF_COMPRAS);
       doc.setFont(undefined, 'bold');
       doc.text('Presupuestos:', 15, y);
       y += 7;
@@ -2641,30 +2729,47 @@
         if (y > 275) { doc.addPage(); y = 20; }
         const elegido = solicitud.presupuestoElegido === i && fueAprobada(solicitud.estado);
         const txt = (i + 1) + '. ' + p.proveedor + ' — ' + formatoPesos(p.monto) +
-          (p.observaciones ? ' (' + p.observaciones + ')' : '') + (elegido ? '   [APROBADO]' : '');
-        const lineas = doc.splitTextToSize(txt, 175);
+          (p.observaciones ? ' (' + p.observaciones + ')' : '');
+        const marca = '[APROBADO]';
+        doc.setFont(undefined, 'bold');
+        const anchoMarca = elegido ? doc.getTextWidth(marca) + 4 : 0;
+        doc.setFont(undefined, 'normal');
+        const lineas = doc.splitTextToSize(txt, 175 - anchoMarca);
+        color(PDF_COMPRAS);
         doc.text(lineas, 20, y);
+        if (elegido) {
+          const ultima = lineas[lineas.length - 1];
+          const x = 20 + doc.getTextWidth(ultima) + 4;
+          color(PDF_APROBADO);
+          doc.setFont(undefined, 'bold');
+          doc.text(marca, x, y + 6 * (lineas.length - 1));
+          doc.setFont(undefined, 'normal');
+        }
         y += 6 * lineas.length;
       });
+      color(PDF_ENCARGADO);
     }
 
+    // Resolución: verde si se aprueba, rojo si se rechaza (sea Gerencia o Compras quien rechace).
     if (fueAprobada(solicitud.estado)) {
-      y += 2;
-      linea('Resolución de Gerencia', 'Aprobada' + (solicitud.resueltaEn ? ' el ' + fechaDeTimestamp(solicitud.resueltaEn) : ''));
+      separador();
+      linea('Resolución de Gerencia', 'Aprobada' + (solicitud.resueltaEn ? ' el ' + fechaDeTimestamp(solicitud.resueltaEn) : ''), PDF_APROBADO);
     }
     if (solicitud.estado === 'rechazada') {
-      y += 2;
-      linea(solicitud.rechazadaPor === 'compras' ? 'Rechazada por Compras' : 'Resolución de Gerencia',
-        (solicitud.rechazadaPor === 'compras' ? '' : 'Rechazada — ') + (solicitud.motivoRechazo || ''));
+      separador();
+      const porCompras = solicitud.rechazadaPor === 'compras';
+      linea(porCompras ? 'Rechazada por Compras' : 'Resolución de Gerencia',
+        (porCompras ? '' : 'Rechazada — ') + (solicitud.motivoRechazo || ''), PDF_RECHAZADO);
     }
     if (compraHecha(solicitud.estado)) {
-      linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''));
+      separador();
+      linea('Compra realizada', (solicitud.finalizadaEn ? fechaDeTimestamp(solicitud.finalizadaEn) : '') + (solicitud.notaCompra ? ' — ' + solicitud.notaCompra : ''), PDF_COMPRAS);
     }
-    // Recepción. En los paneles el dato viene de Firebase (estado); en el celular del
-    // encargado viene de lo que quedó guardado al confirmar (estadoRemoto).
+    // Recepción (la confirma el encargado). En los paneles el dato viene de Firebase (estado);
+    // en el celular del encargado viene de lo que quedó guardado al confirmar (estadoRemoto).
     if (solicitud.estado === 'recibida' || solicitud.estadoRemoto === 'recibida') {
       const fechaRecepcion = solicitud.recibidaEn ? fechaDeTimestamp(solicitud.recibidaEn) : fechaCorta(solicitud.recibidaLocal);
-      y += 2;
+      separador();
       linea('Orden recibida', fechaRecepcion ? 'Sí, el ' + fechaRecepcion : 'Sí');
       linea('Recibida por', solicitud.recibidaPorNombre || solicitud.encargado || '-');
     }
@@ -2681,7 +2786,7 @@
         doc.setFont(undefined, 'bold');
         doc.text(titulo, x, y);
         try {
-          doc.addImage(imagen, 'PNG', x, y + 4, 70, 30, undefined, 'FAST');
+          doc.addImage(firmaParaPDF(imagen), 'PNG', x, y + 4, 70, 30, undefined, 'FAST');
         } catch (e) {
           // si la firma falla, seguimos sin bloquear el resto del PDF
         }
@@ -3094,7 +3199,7 @@
     firmaCtx = canvas.getContext('2d');
     firmaCtx.fillStyle = '#ffffff';
     firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
-    firmaCtx.strokeStyle = '#000000';
+    firmaCtx.strokeStyle = COLOR_FIRMA;   // azul tinta de birome
     firmaCtx.lineWidth = 3;
     firmaCtx.lineCap = 'round';
     firmaCtx.lineJoin = 'round';
@@ -3410,6 +3515,7 @@
   function escucharSolicitudes() {
     const unsub = db.collection('solicitudes').onSnapshot(function(snap) {
       datosSolicitudes = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      prepararFirmasDe(datosSolicitudes);
       avisarCambiosSolicitudes();
       renderPanel();
       actualizarMesesExcel();
