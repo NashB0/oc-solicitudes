@@ -1035,9 +1035,8 @@
   // Los encargados comparten usuario: cada orden guarda desde qué celular se creó y los avisos
   // de esa orden le llegan solo a ese celular.
   const URL_AVISOS = 'https://oc-avisos.ignabeni1.workers.dev';
-  // Clave pública de avisos de cada proyecto. La del proyecto real se completa al pasar a producción;
-  // mientras esté vacía, en producción los avisos quedan apagados y nada cambia.
-  const CLAVE_AVISOS = ES_PRUEBA ? 'BPwDDRiVrMiqPZzpMfgx9Axq_5v-2m395SpOHPQwlrbbOwElmTY3MuD8kXs5v1f7pE9iu4UMqS_HCTBvGbaii54' : '';
+  // Clave pública de avisos de cada proyecto (prueba : real). Cada entorno usa la de su propio proyecto.
+  const CLAVE_AVISOS = ES_PRUEBA ? 'BPwDDRiVrMiqPZzpMfgx9Axq_5v-2m395SpOHPQwlrbbOwElmTY3MuD8kXs5v1f7pE9iu4UMqS_HCTBvGbaii54' : 'BDBDy_3BeXQ7RrLJEgecYIEbGL-HKHWBKbdvH7MeNk3UXONwCpXYllO0f1dc-jdTiLx9E1DdoRxeZySqif1OQGU';
   const URL_MENSAJERIA = 'https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js';
   const SUFIJO_LOCAL = ES_PRUEBA ? '_prueba' : '';
   let avisosRegistrados = false;
